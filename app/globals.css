@@ -1,0 +1,98 @@
+/* This file holds the global styles: the base colors, the font of the two languages,
+   and the small tweaks the Leaflet map needs. The colors themselves come from lib/theme.ts
+   (they are injected as CSS variables by the root layout). */
+
+@import "tailwindcss";
+@config "../tailwind.config.ts";
+
+@layer base {
+  html {
+    color-scheme: light;
+    -webkit-text-size-adjust: 100%;
+  }
+
+  /* The Arabic font is used when the language is Arabic, the English font otherwise. */
+  html[lang="ar"] {
+    font-family: var(--font-noto-kufi-arabic), "Noto Kufi Arabic", ui-sans-serif, sans-serif;
+  }
+
+  html[lang="en"] {
+    font-family: var(--font-inter), Inter, ui-sans-serif, sans-serif;
+  }
+
+  body {
+    background-color: var(--nawy-page);
+    color: var(--nawy-ink);
+  }
+
+  /* The native time picker follows the light theme. */
+  input[type="time"]::-webkit-calendar-picker-indicator {
+    cursor: pointer;
+  }
+}
+
+/* ---------------- The Leaflet map ---------------- */
+
+.leaflet-container {
+  background: var(--nawy-card);
+  font-family: inherit;
+}
+
+/* The zoom buttons: card background, text color icons, border color. */
+.leaflet-bar {
+  border: 1px solid var(--nawy-line) !important;
+  box-shadow: none !important;
+  border-radius: 8px !important;
+  overflow: hidden;
+}
+
+.leaflet-bar a {
+  background: var(--nawy-card) !important;
+  color: var(--nawy-ink) !important;
+  border-bottom: 1px solid var(--nawy-line) !important;
+  width: 30px !important;
+  height: 30px !important;
+  line-height: 30px !important;
+  font-size: 16px !important;
+}
+
+.leaflet-bar a:last-child {
+  border-bottom: none !important;
+}
+
+.leaflet-bar a:hover {
+  background: var(--nawy-soft) !important;
+  color: var(--nawy-primary) !important;
+}
+
+.leaflet-control-attribution {
+  background: var(--nawy-card) !important;
+  color: var(--nawy-muted) !important;
+  font-size: 10px !important;
+  padding: 1px 5px !important;
+}
+
+.leaflet-control-attribution a {
+  color: var(--nawy-primary) !important;
+}
+
+/* The marker of the branch: a primary dot with a white outline. */
+.nawy-marker-icon {
+  background: transparent;
+  border: none;
+}
+
+.nawy-marker-dot {
+  display: block;
+  width: 18px;
+  height: 18px;
+  border-radius: 9999px;
+  background: var(--nawy-primary);
+  border: 3px solid var(--nawy-card);
+  box-shadow: 0 0 0 3px var(--nawy-primary-ring);
+  cursor: grab;
+}
+
+.nawy-marker-dot:active {
+  cursor: grabbing;
+}
