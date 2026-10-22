@@ -22,6 +22,8 @@ type BranchMapProps = {
   longitude: number | null;
   /** Called when the visitor clicks the map or drops the marker. */
   onPick: (latitude: number, longitude: number) => void;
+  /** Called when the coordinates change because of an address search (outside the map). */
+  searchRef?: RefObject<[number, number] | null>;
   /** The hint shown over the map while there is no marker yet. */
   hint?: string;
 };
@@ -30,11 +32,13 @@ export default function BranchMap({
   latitude,
   longitude,
   onPick,
+  searchRef,
   hint,
 }: BranchMapProps): ReactElement {
   // The last point picked on the map. It tells the map mover to not move again for that point,
   // so a click on the map does not start a loop.
   const pickedRef = useRef<[number, number] | null>(null);
+  const internalSearchRef = useRef<[number, number] | null>(null);
 
   // The marker is a primary dot with a white outline. The colors come from the stylesheet.
   const markerIcon = useMemo(
@@ -53,6 +57,9 @@ export default function BranchMap({
 
   function pick(nextLatitude: number, nextLongitude: number): void {
     pickedRef.current = [nextLatitude, nextLongitude];
+    if (searchRef !== undefined) {
+      searchRef.current = null;
+    }
     onPick(nextLatitude, nextLongitude);
   }
 
@@ -78,7 +85,12 @@ export default function BranchMap({
 
         {position === null ? null : (
           <>
-            <MapMover latitude={position[0]} longitude={position[1]} pickedRef={pickedRef} />
+        <MapMover
+          latitude={position[0]}
+          longitude={position[1]}
+          pickedRef={pickedRef}
+          searchRef={searchRef ?? internalSearchRef}
+        />
             <Marker
               position={position}
               icon={markerIcon}
@@ -122,15 +134,18 @@ function MapMover({
   latitude,
   longitude,
   pickedRef,
+  searchRef,
 }: {
   latitude: number;
   longitude: number;
   pickedRef: RefObject<[number, number] | null>;
+  searchRef: RefObject<[number, number] | null>;
 }): null {
   const map = useMap();
 
   useEffect(() => {
     const picked = pickedRef.current;
+    const searched = searchRef.current;
 
     if (picked !== null && picked[0] === latitude && picked[1] === longitude) {
       // The point was picked on the map, so the map is already there: do not move it again.
@@ -138,8 +153,12 @@ function MapMover({
       return;
     }
 
-    map.flyTo([latitude, longitude], LOCATION_MAP_ZOOM);
-  }, [latitude, longitude, map, pickedRef]);
+    if (searched !== null && searched[0] === latitude && searched[1] === longitude) {
+      map.flyTo([latitude, longitude], LOCATION_MAP_ZOOM);
+      searchRef.current = null;
+      return;
+    }
+  }, [latitude, longitude, map, pickedRef, searchRef]);
 
   return null;
 }

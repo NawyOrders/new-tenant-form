@@ -1,4 +1,4 @@
-// This file shows all the fields of ONE branch: name, address with the search button,
+﻿// This file shows all the fields of ONE branch: name, address with the search button,
 // the coordinates, the opening hours and the map.
 //
 // The address, the coordinates and the map always agree:
@@ -8,7 +8,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import type { KeyboardEvent, ReactElement } from "react";
 import Button from "@/components/ui/Button";
 import TextInput from "@/components/ui/TextInput";
@@ -49,6 +49,7 @@ export default function BranchCard({
   const [isSearching, setIsSearching] = useState<boolean>(false);
   const [isLocating, setIsLocating] = useState<boolean>(false);
   const [message, setMessage] = useState<string>("");
+  const searchMoveRef = useRef<[number, number] | null>(null);
 
   /** The error message of one field of this branch. */
   function errorFor(field: string): string | undefined {
@@ -78,6 +79,7 @@ export default function BranchCard({
       return;
     }
 
+    (searchMoveRef as any).current = [result.latitude, result.longitude];
     onChange({
       address: result.displayName,
       latitude: result.latitude,
@@ -96,6 +98,7 @@ export default function BranchCard({
 
     if (place === null) {
       // The coordinates stay, the address is cleared and the visitor is asked to type it.
+      // Do NOT touch latitude or longitude.
       onChange({ address: "" });
       setMessage(t(lang, "map.failed"));
       return;
@@ -181,7 +184,7 @@ export default function BranchCard({
             name={`branch-latitude-${branch.id}`}
             dir="ltr"
             readOnly
-            placeholder="—"
+            placeholder="â€”"
             value={branch.latitude === null ? "" : branch.latitude.toFixed(6)}
             error={errorFor("latitude")}
             hint={t(lang, "branch.coordsHint")}
@@ -193,7 +196,7 @@ export default function BranchCard({
             name={`branch-longitude-${branch.id}`}
             dir="ltr"
             readOnly
-            placeholder="—"
+            placeholder="â€”"
             value={branch.longitude === null ? "" : branch.longitude.toFixed(6)}
             hint={t(lang, "branch.coordsHint")}
             onChange={() => undefined}
@@ -225,6 +228,7 @@ export default function BranchCard({
         <BranchMap
           latitude={branch.latitude}
           longitude={branch.longitude}
+          searchRef={searchMoveRef as any}
           onPick={(latitude, longitude) => void handlePick(latitude, longitude)}
           hint={t(lang, "map.hint")}
         />
@@ -232,3 +236,4 @@ export default function BranchCard({
     </div>
   );
 }
+
