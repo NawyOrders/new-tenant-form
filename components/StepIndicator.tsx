@@ -1,19 +1,20 @@
-// This file shows the step counter ("الخطوة 1 من 4") and the four progress bars.
+// This file shows the step counter ("الخطوة 1 من 4") and the progress bars.
 
 import type { ReactElement } from "react";
-import { STEPS, TOTAL_STEPS } from "@/lib/constants";
+import { STEP_ORDER, TOTAL_STEPS } from "@/lib/constants";
 import { t } from "@/lib/i18n";
 import type { TranslationKey } from "@/lib/i18n";
 import type { Lang } from "@/lib/types";
 
 type StepIndicatorProps = {
-  /** The step the visitor is on right now (1 to 4). */
+  /** The step the visitor is on right now (1-based). */
   currentStep: number;
   lang: Lang;
 };
 
 export default function StepIndicator({ currentStep, lang }: StepIndicatorProps): ReactElement {
-  const titleKey: TranslationKey = `step.${currentStep}` as TranslationKey;
+  const stepKey = STEP_ORDER[currentStep - 1] ?? STEP_ORDER[0];
+  const titleKey: TranslationKey = (`step.${stepKey}` as TranslationKey);
 
   return (
     <div className="mt-4">
@@ -25,12 +26,12 @@ export default function StepIndicator({ currentStep, lang }: StepIndicatorProps)
       </div>
 
       <div className="mt-2 flex gap-2">
-        {STEPS.map((step) => (
+        {STEP_ORDER.map((key, index) => (
           <span
-            key={step.id}
+            key={key}
             aria-hidden="true"
             className={`h-1.5 flex-1 rounded-pill transition-colors ${
-              step.id <= currentStep ? "bg-primary" : "bg-line"
+              index + 1 <= currentStep ? "bg-primary" : "bg-line"
             }`}
           />
         ))}

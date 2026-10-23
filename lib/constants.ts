@@ -2,10 +2,13 @@
 // the mock plans, the features of the plans, and the map defaults.
 
 import { theme } from "./theme";
-import type { BillingCycle, Branch, BilingualText, Plan, RecommendedPalette, StepInfo } from "./types";
+import type { BillingCycle, Branch, BilingualText, Lang, Plan, RecommendedPalette, StepInfo } from "./types";
+
+/** The ordered list of step keys. Moving payment only means reordering this array. */
+export const STEP_ORDER: string[] = ["main", "identity", "branches", "package", "payment"];
 
 /** The number of steps of the wizard. */
-export const TOTAL_STEPS = 4;
+export const TOTAL_STEPS = STEP_ORDER.length;
 
 /** The maximum number of branches a restaurant can have. */
 export const MAX_BRANCHES = 2;
@@ -28,13 +31,11 @@ export const ACCEPTED_MENU_TYPES: string[] = ["application/pdf", "image/png", "i
 /** The same types, in the format the file input wants. */
 export const ACCEPTED_MENU_INPUT = "application/pdf,image/png,image/jpeg";
 
-/** The four steps of the wizard. The titles are translation keys. */
-export const STEPS: StepInfo[] = [
-  { id: 1, titleKey: "step.1" },
-  { id: 2, titleKey: "step.2" },
-  { id: 3, titleKey: "step.3" },
-  { id: 4, titleKey: "step.4" },
-];
+/** The steps of the wizard built from STEP_ORDER. The titles are translation keys. */
+export const STEPS: StepInfo[] = STEP_ORDER.map((key, index) => ({
+  id: index + 1,
+  titleKey: `step.${key}`,
+}));
 
 /** The OpenStreetMap tiles. */
 export const TILE_URL = "https://tile.openstreetmap.org/{z}/{x}/{y}.png";

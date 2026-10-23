@@ -119,10 +119,19 @@ export function validateStep4(data: RegisterData, lang: Lang): Record<string, st
   return errors;
 }
 
+import { STEP_ORDER } from "./constants";
+
 /** Runs the check of one step. */
 export function validateStep(step: number, data: RegisterData, lang: Lang): Record<string, string> {
+  const key = STEP_ORDER[step - 1];
+  if (key === "main") return validateStep1(data, lang);
+  if (key === "identity") return validateStep2(data, lang);
+  if (key === "branches") return validateStep3(data, lang);
+  if (key === "package") return validateStep4(data, lang);
+  if (key === "payment") return {};
   if (step === 1) return validateStep1(data, lang);
   if (step === 2) return validateStep2(data, lang);
   if (step === 3) return validateStep3(data, lang);
-  return validateStep4(data, lang);
+  if (step === 4) return validateStep4(data, lang);
+  return {};
 }

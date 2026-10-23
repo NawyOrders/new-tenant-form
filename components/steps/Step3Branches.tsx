@@ -22,11 +22,12 @@ export default function Step3Branches({ data, errors, lang, onChange }: Step3Bra
 
   /** Replaces one branch in the list with the new values from its card. */
   function handleBranchChange(branchId: number, patch: Partial<Branch>): void {
-    onChange({
-      branches: data.branches.map((branch) =>
+    const updater = (prev: RegisterData): Partial<RegisterData> => ({
+      branches: prev.branches.map((branch) =>
         branch.id === branchId ? { ...branch, ...patch } : branch,
       ),
     });
+    onChange(updater as unknown as Partial<RegisterData>);
   }
 
   function handleBranchRemove(branchId: number): void {

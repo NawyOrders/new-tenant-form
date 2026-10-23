@@ -3,20 +3,23 @@
 
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { Suspense, useEffect, useRef, useState } from "react";
 import type { ReactElement } from "react";
+import { useSearchParams } from "next/navigation";
 import PhonePreview from "./preview/PhonePreview";
 import StepIndicator from "./StepIndicator";
 import Step1MainInfo from "./steps/Step1MainInfo";
 import Step2Identity from "./steps/Step2Identity";
 import Step3Branches from "./steps/Step3Branches";
 import Step4Package from "./steps/Step4Package";
+import StepPayment from "./steps/StepPayment";
 import TopBar from "./TopBar";
 import Button from "./ui/Button";
-import { TOTAL_STEPS } from "@/lib/constants";
+import { STEP_ORDER, TOTAL_STEPS } from "@/lib/constants";
 import { t } from "@/lib/i18n";
 import { submitRegistration } from "@/lib/submitRegistration";
 import { validateStep } from "@/lib/validation";
+import { getDevFixtures } from "@/lib/devFixtures";
 import type { Lang, RegisterData, StepErrors, SubmitResult } from "@/lib/types";
 
 /** The form when the page opens. */
@@ -31,10 +34,36 @@ const INITIAL_DATA: RegisterData = {
   billingCycle: "monthly",
 };
 
-export default function RegisterWizard(): ReactElement {
-  const [data, setData] = useState<RegisterData>(INITIAL_DATA);
+function RegisterWizardInner(): ReactElement {
+  const searchParams = useSearchParams();
+  const initialState = useRef<{ data: RegisterData; step: number } | null>(null);
+
+  if (initialState.current === null) {
+    let nextData: RegisterData = { ...INITIAL_DATA };
+    let nextStep = 1;
+
+    if (process.env.NODE_ENV === "development") {
+      const stepParam = searchParams.get("step");
+      if (stepParam && STEP_ORDER.includes(stepParam)) {
+        const idx = STEP_ORDER.indexOf(stepParam);
+        if (idx >= 0) {
+          nextStep = idx + 1;
+        }
+      }
+
+      const demoParam = searchParams.get("demo");
+      if (demoParam === "1") {
+        const fixtures = getDevFixtures();
+        nextData = { ...nextData, ...fixtures };
+      }
+    }
+
+    initialState.current = { data: nextData, step: nextStep };
+  }
+
+  const [data, setData] = useState<RegisterData>(initialState.current.data);
   const [lang, setLang] = useState<Lang>("ar");
-  const [currentStep, setCurrentStep] = useState<number>(1);
+  const [currentStep, setCurrentStep] = useState<number>(initialState.current.step);
   const [errors, setErrors] = useState<StepErrors>({});
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
   const [menuUrl, setMenuUrl] = useState<string | null>(null);
@@ -75,25 +104,30 @@ export default function RegisterWizard(): ReactElement {
   }
 
   /** The ONE change callback given to every step. */
-  function handleChange(patch: Partial<RegisterData>): void {
-    setData((prev) => ({ ...prev, ...patch }));
+  function handleChange(patch: Partial<RegisterData> | ((prev: RegisterData) => Partial<RegisterData>)): void {
+    setData((prev) => {
+      const nextPatch = typeof patch === "function" ? patch(prev) : patch;
+      const next = { ...prev, ...nextPatch };
 
-    if (patch.logoFile !== undefined && patch.logoFile !== data.logoFile) {
-      const url: string | null = createLocalUrl(patch.logoFile, logoUrlRef.current);
-      logoUrlRef.current = url;
-      setLogoUrl(url);
-    }
+      if (nextPatch.logoFile !== undefined && nextPatch.logoFile !== prev.logoFile) {
+        const url: string | null = createLocalUrl(nextPatch.logoFile, logoUrlRef.current);
+        logoUrlRef.current = url;
+        setLogoUrl(url);
+      }
 
-    if (patch.menuFile !== undefined && patch.menuFile !== data.menuFile) {
-      const url: string | null = createLocalUrl(patch.menuFile, menuUrlRef.current);
-      menuUrlRef.current = url;
-      setMenuUrl(url);
-    }
+      if (nextPatch.menuFile !== undefined && nextPatch.menuFile !== prev.menuFile) {
+        const url: string | null = createLocalUrl(nextPatch.menuFile, menuUrlRef.current);
+        menuUrlRef.current = url;
+        setMenuUrl(url);
+      }
 
-    // The errors only show after the visitor tried to go to the next step.
-    if (Object.keys(errors).length > 0) {
-      setErrors(validateStep(currentStep, data, lang));
-    }
+      // The errors only show after the visitor tried to go to the next step.
+      if (Object.keys(errors).length > 0) {
+        setErrors(validateStep(currentStep, next, lang));
+      }
+
+      return next;
+    });
   }
 
   function scrollToTop(): void {
@@ -105,6 +139,10 @@ export default function RegisterWizard(): ReactElement {
     setErrors({});
     setCurrentStep(step);
     scrollToTop();
+  }
+
+  function getCurrentStepKey(): string {
+    return STEP_ORDER[currentStep - 1] ?? STEP_ORDER[0];
   }
 
   /** Changes the language. The data of the form is never lost. */
@@ -119,6 +157,11 @@ export default function RegisterWizard(): ReactElement {
 
   /** Checks the step and moves to the next one when everything is fine. */
   function handleNext(): void {
+    const key = getCurrentStepKey();
+    // Payment is handled separately by its own Pay button
+    if (key === "payment") {
+      return;
+    }
     const stepErrors: StepErrors = validateStep(currentStep, data, lang);
     setErrors(stepErrors);
 
@@ -234,35 +277,46 @@ export default function RegisterWizard(): ReactElement {
                   </p>
                 ) : null}
 
-                {currentStep === 1 ? (
-                  <Step1MainInfo
-                    data={data}
-                    errors={errors}
-                    lang={lang}
-                    logoUrl={logoUrl}
-                    menuUrl={menuUrl}
-                    onChange={handleChange}
-                  />
-                ) : null}
-
-                {currentStep === 2 ? (
-                  <Step2Identity
-                    data={data}
-                    errors={errors}
-                    lang={lang}
-                    logoUrl={logoUrl}
-                    onChange={handleChange}
-                    onEditLogo={() => goToStep(1)}
-                  />
-                ) : null}
-
-                {currentStep === 3 ? (
-                  <Step3Branches data={data} errors={errors} lang={lang} onChange={handleChange} />
-                ) : null}
-
-                {currentStep === 4 ? (
-                  <Step4Package data={data} errors={errors} lang={lang} onChange={handleChange} />
-                ) : null}
+                {(() => {
+                  const key = getCurrentStepKey();
+                  if (key === "payment") {
+                    return <StepPayment data={data} errors={errors} lang={lang} onChange={handleChange} />;
+                  }
+                  if (key === "main") {
+                    return (
+                      <Step1MainInfo
+                        data={data}
+                        errors={errors}
+                        lang={lang}
+                        logoUrl={logoUrl}
+                        menuUrl={menuUrl}
+                        onChange={handleChange}
+                      />
+                    );
+                  }
+                  if (key === "identity") {
+                    return (
+                      <Step2Identity
+                        data={data}
+                        errors={errors}
+                        lang={lang}
+                        logoUrl={logoUrl}
+                        onChange={handleChange}
+                        onEditLogo={() => {
+                          const idx = STEP_ORDER.indexOf("main");
+                          goToStep(idx >= 0 ? idx + 1 : 1);
+                        }}
+                      />
+                    );
+                  }
+                  if (key === "branches") {
+                    return <Step3Branches data={data} errors={errors} lang={lang} onChange={handleChange} />;
+                  }
+                  if (key === "package") {
+                    return <Step4Package data={data} errors={errors} lang={lang} onChange={handleChange} />;
+                  }
+                  return null;
+                })()}
 
                 <div className="mt-8 flex items-center justify-between gap-3 border-t border-line pt-6">
                   {currentStep > 1 ? (
@@ -273,13 +327,21 @@ export default function RegisterWizard(): ReactElement {
                     <span />
                   )}
 
-                  {currentStep < TOTAL_STEPS ? (
-                    <Button onClick={handleNext}>{t(lang, "btn.next")}</Button>
-                  ) : (
-                    <Button isLoading={isSubmitting} onClick={() => void handleSubmit()}>
-                      {t(lang, "btn.finish")}
-                    </Button>
-                  )}
+                  {(() => {
+                    const key = getCurrentStepKey();
+                    const isLast = STEP_ORDER[STEP_ORDER.length - 1] === key;
+                    if (key === "payment") {
+                      return <span />;
+                    }
+                    if (!isLast) {
+                      return <Button onClick={handleNext}>{t(lang, "btn.next")}</Button>;
+                    }
+                    return (
+                      <Button isLoading={isSubmitting} onClick={() => void handleSubmit()}>
+                        {t(lang, "btn.finish")}
+                      </Button>
+                    );
+                  })()}
                 </div>
               </>
             )}
@@ -292,5 +354,13 @@ export default function RegisterWizard(): ReactElement {
         </div>
       </main>
     </div>
+  );
+}
+
+export default function RegisterWizard(): ReactElement {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-page" />}>
+      <RegisterWizardInner />
+    </Suspense>
   );
 }

@@ -1,4 +1,4 @@
-# agent.md: Nawy Orders Restaurant Registration
+# AGENTS.md: Nawy Orders Restaurant Registration
 
 This file holds the standing rules for any AI agent working on this project.
 Read it before every task. The task prompt adds details on top of these rules.
@@ -8,7 +8,19 @@ Read it before every task. The task prompt adds details on top of these rules.
 - React state with useState and props only
 - Leaflet + react-leaflet for the map (OpenStreetMap tiles only)
 - Nominatim for address search and reverse geocoding
-- No paid APIs, no API keys, no database, no auth in this version
+- Paymob Unified Checkout (Intention API) for payments
+- No paid map APIs, no database, no auth in this version
+
+## Server code (the only exception to the client-side rule)
+- Server code is allowed ONLY in:
+  - app/api/payment/*
+  - lib/payment/*
+- Every file in lib/payment/ starts with: import "server-only";
+- Everything else stays client-side.
+- All Paymob secrets stay on the server and are read from process.env.
+- Never add NEXT_PUBLIC_ to a secret. Only PAYMOB_PUBLIC_KEY and NEXT_PUBLIC_APP_URL may be exposed to the browser.
+- Never accept a payment amount from the browser. The server computes it from lib/constants.ts using the plan id and billing cycle.
+- Never log secret keys, HMAC secrets, or full request bodies that contain personal data.
 
 ## Forbidden
 - No Redux, Zustand, Context API, or custom hooks
@@ -18,7 +30,8 @@ Read it before every task. The task prompt adds details on top of these rules.
 - No hardcoded UI text inside components (text lives in lib/i18n.ts)
 - No `any` type. No `@ts-ignore` unless there is a written reason in a comment
 - No network request on every keystroke or mouse move
-- No sending of files (logo, menu) to any server yet
+- No sending of logo or menu files to any server yet
+- No Paymob calls from client components. The browser only calls /api/payment/*
 - No extra pages, features, or sections not in the task prompt
 
 ## Code style
@@ -35,12 +48,12 @@ Read it before every task. The task prompt adds details on top of these rules.
 4. When two sources conflict, stop and report it instead of guessing.
 
 ## Working method
-- Build one step at a time. After each step, run the type check and the dev server, and confirm the step works before moving on.
+- Build one step at a time. After each step, run `npx tsc --noEmit` and `npm run build`, and confirm the step works before moving on.
 - Keep the form state in RegisterWizard only. Pass data down as props and changes back as callbacks.
 - When something is unclear, do the part that is clear, mark the unclear part with a TODO comment, and list it in the final summary.
 
 ## Done means
-- `npm run build` and the type check pass with no errors.
+- `npx tsc --noEmit` and `npm run build` pass with no errors.
 - Language toggle works on every step, and no data is lost when switching.
 - Preview shows every entered value and updates instantly.
-- README.md is updated with: what the app does, how to run it, what is mocked, and where the theme and text live.
+- README.md is updated with: what the app does, how to run it, what is mocked, where the theme and text live, and which env variables are required.
