@@ -85,12 +85,12 @@ export default function BranchMap({
 
         {position === null ? null : (
           <>
-        <MapMover
-          latitude={position[0]}
-          longitude={position[1]}
-          pickedRef={pickedRef}
-          searchRef={searchRef ?? internalSearchRef}
-        />
+            <MapMover
+              latitude={position[0]}
+              longitude={position[1]}
+              pickedRef={pickedRef}
+              searchRef={searchRef ?? internalSearchRef}
+            />
             <Marker
               position={position}
               icon={markerIcon}

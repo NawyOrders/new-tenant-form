@@ -1,5 +1,6 @@
 // This file is the top bar of the wizard: the title of the app and the language button.
 
+import Image from "next/image";
 import type { ReactElement } from "react";
 import { t } from "@/lib/i18n";
 import type { Lang } from "@/lib/types";
@@ -15,11 +16,15 @@ export default function TopBar({ lang, onToggleLang }: TopBarProps): ReactElemen
   return (
     <div className="flex items-center justify-between gap-3">
       <div className="flex min-w-0 items-center gap-3">
-        <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-panel bg-primary-dark text-white">
-          <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
-            <path d="M6 8h12l-1 12H7L6 8Z" strokeLinejoin="round" />
-            <path d="M9 8V6a3 3 0 0 1 6 0v2" strokeLinecap="round" />
-          </svg>
+        <span className="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-panel bg-card">
+          <Image
+            src="/nawy-orders-logo.png"
+            alt={t(lang, "app.logoAlt")}
+            width={44}
+            height={44}
+            priority
+            className="h-full w-full object-contain"
+          />
         </span>
 
         <div className="min-w-0">

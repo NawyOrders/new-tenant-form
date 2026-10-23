@@ -179,28 +179,31 @@ export default function BranchCard({
         </div>
 
         <div className="grid gap-3 sm:grid-cols-2">
-          <TextInput
-            label={t(lang, "branch.latitude")}
-            name={`branch-latitude-${branch.id}`}
-            dir="ltr"
-            readOnly
-            placeholder="â€”"
-            value={branch.latitude === null ? "" : branch.latitude.toFixed(6)}
-            error={errorFor("latitude")}
-            hint={t(lang, "branch.coordsHint")}
-            onChange={() => undefined}
-          />
+          <div>
+            <p className="mb-1 text-sm font-semibold text-ink">
+              {t(lang, "branch.latitude")}
+            </p>
+            <span dir="ltr" className="block text-xs text-muted">
+              {branch.latitude === null ? "—" : branch.latitude.toFixed(6)}
+            </span>
+            <p className="mt-1 text-xs text-muted">{t(lang, "branch.coordsHint")}</p>
+            {errorFor("latitude") ? (
+              <p className="mt-1 text-xs text-danger-strong">{errorFor("latitude")}</p>
+            ) : null}
+          </div>
 
-          <TextInput
-            label={t(lang, "branch.longitude")}
-            name={`branch-longitude-${branch.id}`}
-            dir="ltr"
-            readOnly
-            placeholder="â€”"
-            value={branch.longitude === null ? "" : branch.longitude.toFixed(6)}
-            hint={t(lang, "branch.coordsHint")}
-            onChange={() => undefined}
-          />
+          <div>
+            <p className="mb-1 text-sm font-semibold text-ink">
+              {t(lang, "branch.longitude")}
+            </p>
+            <span dir="ltr" className="block text-xs text-muted">
+              {branch.longitude === null ? "—" : branch.longitude.toFixed(6)}
+            </span>
+            <p className="mt-1 text-xs text-muted">{t(lang, "branch.coordsHint")}</p>
+            {errorFor("longitude") ? (
+              <p className="mt-1 text-xs text-danger-strong">{errorFor("longitude")}</p>
+            ) : null}
+          </div>
         </div>
 
         <div>
@@ -228,7 +231,7 @@ export default function BranchCard({
         <BranchMap
           latitude={branch.latitude}
           longitude={branch.longitude}
-          searchRef={searchMoveRef as any}
+          searchRef={searchMoveRef}
           onPick={(latitude, longitude) => void handlePick(latitude, longitude)}
           hint={t(lang, "map.hint")}
         />

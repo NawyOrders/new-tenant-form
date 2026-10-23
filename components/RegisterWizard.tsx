@@ -76,8 +76,7 @@ export default function RegisterWizard(): ReactElement {
 
   /** The ONE change callback given to every step. */
   function handleChange(patch: Partial<RegisterData>): void {
-    const nextData: RegisterData = { ...data, ...patch };
-    setData(nextData);
+    setData((prev) => ({ ...prev, ...patch }));
 
     if (patch.logoFile !== undefined && patch.logoFile !== data.logoFile) {
       const url: string | null = createLocalUrl(patch.logoFile, logoUrlRef.current);
@@ -93,7 +92,7 @@ export default function RegisterWizard(): ReactElement {
 
     // The errors only show after the visitor tried to go to the next step.
     if (Object.keys(errors).length > 0) {
-      setErrors(validateStep(currentStep, nextData, lang));
+      setErrors(validateStep(currentStep, data, lang));
     }
   }
 

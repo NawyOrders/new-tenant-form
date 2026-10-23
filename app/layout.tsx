@@ -25,6 +25,9 @@ const inter = Inter({
 export const metadata: Metadata = {
   title: "Nawy Orders – Restaurant Registration",
   description: "Register a new restaurant on Nawy Orders in 4 simple steps.",
+  icons: {
+    icon: "/favicon.png",
+  },
 };
 
 export default function RootLayout({ children }: { children: ReactNode }): ReactElement {
