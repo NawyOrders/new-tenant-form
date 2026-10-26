@@ -3,7 +3,7 @@
 
 "use client";
 
-import type { ReactElement } from "react";
+import type { FocusEvent, ReactElement } from "react";
 import BranchCard from "@/components/branches/BranchCard";
 import Button from "@/components/ui/Button";
 import { MAX_BRANCHES, createEmptyBranch } from "@/lib/constants";
@@ -15,10 +15,21 @@ type Step3BranchesProps = {
   errors: StepErrors;
   lang: Lang;
   onChange: (patch: Partial<RegisterData>) => void;
+  /** Called with the field key when a validated field loses focus. */
+  onBlurField: (field: string) => void;
 };
 
-export default function Step3Branches({ data, errors, lang, onChange }: Step3BranchesProps): ReactElement {
+export default function Step3Branches({ data, errors, lang, onChange, onBlurField }: Step3BranchesProps): ReactElement {
   const isFull: boolean = data.branches.length >= MAX_BRANCHES;
+
+  /** Shows the name error when the name field of a branch loses focus. */
+  function handleBranchBlur(branchId: number, index: number, event: FocusEvent<HTMLDivElement>): void {
+    const target = event.target;
+
+    if (target instanceof HTMLInputElement && target.name === `branch-name-${branchId}`) {
+      onBlurField(`branches.${index}.name`);
+    }
+  }
 
   /** Replaces one branch in the list with the new values from its card. */
   function handleBranchChange(branchId: number, patch: Partial<Branch>): void {
@@ -55,16 +66,17 @@ export default function Step3Branches({ data, errors, lang, onChange }: Step3Bra
 
       <div className="mt-6 space-y-5">
         {data.branches.map((branch, index) => (
-          <BranchCard
-            key={branch.id}
-            branch={branch}
-            index={index}
-            errors={errors}
-            lang={lang}
-            canRemove={data.branches.length > 1}
-            onChange={(patch) => handleBranchChange(branch.id, patch)}
-            onRemove={() => handleBranchRemove(branch.id)}
-          />
+          <div key={branch.id} onBlur={(event) => handleBranchBlur(branch.id, index, event)}>
+            <BranchCard
+              branch={branch}
+              index={index}
+              errors={errors}
+              lang={lang}
+              canRemove={data.branches.length > 1}
+              onChange={(patch) => handleBranchChange(branch.id, patch)}
+              onRemove={() => handleBranchRemove(branch.id)}
+            />
+          </div>
         ))}
       </div>
 

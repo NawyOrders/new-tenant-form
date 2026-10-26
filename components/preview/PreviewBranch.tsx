@@ -3,6 +3,7 @@
 
 import type { ReactElement } from "react";
 import { t } from "@/lib/i18n";
+import { isValidName } from "@/lib/validation";
 import type { Branch, Lang } from "@/lib/types";
 
 type PreviewBranchProps = {
@@ -31,14 +32,19 @@ export default function PreviewBranch({
 }: PreviewBranchProps): ReactElement {
   const hasLocation: boolean = branch.latitude !== null && branch.longitude !== null;
 
+  const branchName: string =
+    branch.name.trim() === ""
+      ? index === 0
+        ? t(lang, "branch.title1")
+        : t(lang, "branch.title2")
+      : isValidName(branch.name)
+        ? branch.name
+        : t(lang, "branch.name.placeholder");
+
   return (
     <div className="rounded-panel border border-line p-3" style={{ backgroundColor: panelColor }}>
       <p className="truncate text-xs font-semibold" style={{ color: textColor }}>
-        {branch.name.trim() === ""
-          ? index === 0
-            ? t(lang, "branch.title1")
-            : t(lang, "branch.title2")
-          : branch.name}
+        {branchName}
       </p>
 
       <p className="mt-1.5 break-words text-[11px] leading-relaxed" style={{ color: mutedColor }}>

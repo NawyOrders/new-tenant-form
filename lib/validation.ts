@@ -17,17 +17,56 @@ export function isValidEgyptianPhone(value: string): boolean {
   return /^(\+?20|0020|0)?1[0125]\d{8}$/.test(digits);
 }
 
+const NAME_MIN_LENGTH = 2;
+const NAME_MAX_LENGTH = 60;
+// Arabic letters, Latin letters, spaces, hyphen, apostrophe and dot only.
+const NAME_ALLOWED_CHARS = /^[\u0600-\u06FFA-Za-z .'-]+$/;
+const NAME_HAS_LETTER = /[\u0600-\u06FFA-Za-z]/;
+
+/** True when the name is 2 to 60 characters and follows the name rules. */
+export function isValidName(value: string): boolean {
+  const trimmed: string = value.trim();
+
+  return (
+    trimmed.length >= NAME_MIN_LENGTH &&
+    trimmed.length <= NAME_MAX_LENGTH &&
+    NAME_ALLOWED_CHARS.test(trimmed) &&
+    NAME_HAS_LETTER.test(trimmed)
+  );
+}
+
+/** The error key of an invalid name: the length rule first, then the characters rule. */
+function getNameErrorKey(value: string): "error.name.length" | "error.name.invalid" {
+  const trimmed: string = value.trim();
+
+  if (trimmed.length < NAME_MIN_LENGTH || trimmed.length > NAME_MAX_LENGTH) {
+    return "error.name.length";
+  }
+
+  return "error.name.invalid";
+}
+
+/** The error message of a name field, empty when the value is valid. */
+function getNameError(value: string, lang: Lang): string {
+  if (value.trim() === "") {
+    return t(lang, "error.required");
+  }
+
+  return isValidName(value) ? "" : t(lang, getNameErrorKey(value));
+}
+
 /** True when the email looks like an email address. */
 export function isValidEmail(value: string): boolean {
-  return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(value.trim());
+  return /^[A-Za-z0-9._%+-]+@[A-Za-z0-9-]+(\.[A-Za-z0-9-]+)*\.[A-Za-z]{2,}$/.test(value.trim());
 }
 
 /** Step 1: the main info of the restaurant and of the owner. */
 export function validateStep1(data: RegisterData, lang: Lang): Record<string, string> {
   const errors: Record<string, string> = {};
 
-  if (data.restaurantName.trim() === "") {
-    errors["restaurantName"] = t(lang, "error.required");
+  const restaurantNameError: string = getNameError(data.restaurantName, lang);
+  if (restaurantNameError !== "") {
+    errors["restaurantName"] = restaurantNameError;
   }
 
   if (data.logoFile === null) {
@@ -38,8 +77,9 @@ export function validateStep1(data: RegisterData, lang: Lang): Record<string, st
     errors["menuFile"] = t(lang, "error.menuMissing");
   }
 
-  if (data.owner.fullName.trim() === "") {
-    errors["owner.fullName"] = t(lang, "error.required");
+  const ownerNameError: string = getNameError(data.owner.fullName, lang);
+  if (ownerNameError !== "") {
+    errors["owner.fullName"] = ownerNameError;
   }
 
   if (data.owner.phone.trim() === "") {
@@ -51,7 +91,7 @@ export function validateStep1(data: RegisterData, lang: Lang): Record<string, st
   if (data.owner.email.trim() === "") {
     errors["owner.email"] = t(lang, "error.required");
   } else if (!isValidEmail(data.owner.email)) {
-    errors["owner.email"] = t(lang, "error.email");
+    errors["owner.email"] = t(lang, "error.email.invalid");
   }
 
   return errors;
@@ -92,8 +132,13 @@ export function validateStep3(data: RegisterData, lang: Lang): Record<string, st
   }
 
   data.branches.forEach((branch, index) => {
-    if (branch.name.trim() === "") {
-      errors[`branches.${index}.name`] = t(lang, "error.required");
+    const branchNameError: string = getNameError(branch.name, lang);
+    if (branchNameError !== "") {
+      errors[`branches.${index}.name`] = branchNameError;
+    }
+
+    if (branch.openingTime === branch.closingTime) {
+      errors[`branches.${index}.hours`] = t(lang, "error.hours.equal");
     }
 
     if (branch.address.trim() === "") {
@@ -131,4 +176,31 @@ export function validateStep(step: number, data: RegisterData, lang: Lang): Reco
   if (key === "branches") return validateStep3(data, lang);
   if (key === "package") return validateStep4(data, lang);
   return {};
+}
+
+/** The error of one field, empty when the field is valid. Used when the visitor leaves a field. */
+export function getFieldError(field: string, data: RegisterData, lang: Lang): string {
+  if (field === "restaurantName") {
+    return getNameError(data.restaurantName, lang);
+  }
+
+  if (field === "owner.fullName") {
+    return getNameError(data.owner.fullName, lang);
+  }
+
+  if (field === "owner.email") {
+    if (data.owner.email.trim() === "") {
+      return t(lang, "error.required");
+    }
+
+    return isValidEmail(data.owner.email) ? "" : t(lang, "error.email.invalid");
+  }
+
+  const branchMatch = /^branches\.(\d+)\.name$/.exec(field);
+  if (branchMatch !== null) {
+    const branch = data.branches[Number.parseInt(branchMatch[1], 10)];
+    return branch === undefined ? "" : getNameError(branch.name, lang);
+  }
+
+  return "";
 }

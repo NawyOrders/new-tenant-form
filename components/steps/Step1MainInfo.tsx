@@ -29,6 +29,8 @@ type Step1MainInfoProps = {
   /** The local picture of the menu, null when the menu is a PDF file. */
   menuUrl: string | null;
   onChange: (patch: Partial<RegisterData>) => void;
+  /** Called with the field key when a validated field loses focus. */
+  onBlurField: (field: string) => void;
 };
 
 export default function Step1MainInfo({
@@ -38,6 +40,7 @@ export default function Step1MainInfo({
   logoUrl,
   menuUrl,
   onChange,
+  onBlurField,
 }: Step1MainInfoProps): ReactElement {
   const [fileError, setFileError] = useState<{ logo: string; menu: string }>({ logo: "", menu: "" });
 
@@ -108,6 +111,7 @@ export default function Step1MainInfo({
           error={errors["restaurantName"]}
           required
           onChange={(value) => onChange({ restaurantName: value })}
+          onBlur={() => onBlurField("restaurantName")}
         />
 
         {/* Field A: the logo of the restaurant. */}
@@ -146,6 +150,7 @@ export default function Step1MainInfo({
           error={errors["owner.fullName"]}
           required
           onChange={(value) => onChange({ owner: { ...data.owner, fullName: value } })}
+          onBlur={() => onBlurField("owner.fullName")}
         />
 
         <div className="grid gap-5 sm:grid-cols-2">
@@ -172,6 +177,7 @@ export default function Step1MainInfo({
             error={errors["owner.email"]}
             required
             onChange={(value) => onChange({ owner: { ...data.owner, email: value } })}
+            onBlur={() => onBlurField("owner.email")}
           />
         </div>
       </div>

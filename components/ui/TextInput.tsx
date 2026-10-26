@@ -10,6 +10,8 @@ type TextInputProps = {
   value: string;
   /** Called with the new value every time the user types. */
   onChange: (value: string) => void;
+  /** Called when the field loses focus. */
+  onBlur?: () => void;
   type?: "text" | "email" | "tel" | "time";
   placeholder?: string;
   /** The error message shown under the field. */
@@ -31,6 +33,7 @@ export default function TextInput({
   name,
   value,
   onChange,
+  onBlur,
   type = "text",
   placeholder,
   error,
@@ -63,6 +66,7 @@ export default function TextInput({
         type={type}
         value={value}
         onChange={handleChange}
+        onBlur={onBlur}
         onKeyDown={onKeyDown}
         placeholder={placeholder}
         dir={dir}

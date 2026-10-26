@@ -17,7 +17,7 @@ import Button from "./ui/Button";
 import { STEP_ORDER, TOTAL_STEPS } from "@/lib/constants";
 import { t } from "@/lib/i18n";
 import { submitRegistration } from "@/lib/submitRegistration";
-import { validateStep } from "@/lib/validation";
+import { validateStep, getFieldError } from "@/lib/validation";
 import { getDevFixtures } from "@/lib/devFixtures";
 import type { Lang, RegisterData, StepErrors, SubmitResult } from "@/lib/types";
 
@@ -154,6 +154,23 @@ function RegisterWizardInner(): ReactElement {
     }
   }
 
+  /** Shows the error of one field as soon as the visitor leaves it. */
+  function handleFieldBlur(field: string): void {
+    const message: string = getFieldError(field, data, lang);
+
+    setErrors((prev) => {
+      const next: StepErrors = { ...prev };
+
+      if (message === "") {
+        delete next[field];
+      } else {
+        next[field] = message;
+      }
+
+      return next;
+    });
+  }
+
   /** Checks the step and moves to the next one when everything is fine. */
   function handleNext(): void {
     const stepErrors: StepErrors = validateStep(currentStep, data, lang);
@@ -282,6 +299,7 @@ function RegisterWizardInner(): ReactElement {
                         logoUrl={logoUrl}
                         menuUrl={menuUrl}
                         onChange={handleChange}
+                        onBlurField={handleFieldBlur}
                       />
                     );
                   }
@@ -301,7 +319,7 @@ function RegisterWizardInner(): ReactElement {
                     );
                   }
                   if (key === "branches") {
-                    return <Step3Branches data={data} errors={errors} lang={lang} onChange={handleChange} />;
+                    return <Step3Branches data={data} errors={errors} lang={lang} onChange={handleChange} onBlurField={handleFieldBlur} />;
                   }
                   if (key === "package") {
                     return <Step4Package data={data} errors={errors} lang={lang} onChange={handleChange} />;

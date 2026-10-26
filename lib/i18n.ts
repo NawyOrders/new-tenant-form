@@ -157,6 +157,13 @@ export const translations = {
   "error.submit": { ar: "حدث خطأ، حاول مرة أخرى", en: "Something went wrong, please try again" },
   "error.phone": { ar: "رقم الجوال غير صحيح", en: "Invalid mobile number" },
   "error.email": { ar: "البريد الإلكتروني غير صحيح", en: "Invalid email address" },
+  "error.email.invalid": { ar: "أدخل بريد إلكتروني صحيح", en: "Enter a valid email address" },
+  "error.name.invalid": { ar: "استخدم حروف عربية أو إنجليزية فقط", en: "Use Arabic or English letters only" },
+  "error.name.length": { ar: "الاسم لازم يكون بين 2 و 60 حرف", en: "Name must be 2 to 60 characters" },
+  "error.hours.equal": {
+    ar: "وقت الغلق لازم يكون مختلف عن وقت الفتح",
+    en: "Closing time must differ from opening time",
+  },
   "error.color": { ar: "قيمة اللون غير صحيحة، استخدم صيغة #RRGGBB", en: "Invalid color value, use the #RRGGBB format" },
   "error.fileType": { ar: "صيغة الملف غير مدعومة", en: "Unsupported file format" },
   "error.fileSize": { ar: "حجم الملف أكبر من الحد المسموح", en: "The file is bigger than the allowed size" },

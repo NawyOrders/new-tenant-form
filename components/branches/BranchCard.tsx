@@ -226,6 +226,10 @@ export default function BranchCard({
               onChange={(value) => onChange({ closingTime: value })}
             />
           </div>
+
+          {errorFor("hours") ? (
+            <p className="mt-1 text-xs text-danger-strong">{errorFor("hours")}</p>
+          ) : null}
         </div>
 
         <BranchMap

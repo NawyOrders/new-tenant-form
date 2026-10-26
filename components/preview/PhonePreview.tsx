@@ -9,7 +9,7 @@ import PreviewBranch from "./PreviewBranch";
 import { DEFAULT_BRAND_COLORS, PLANS, getPlanPrice } from "@/lib/constants";
 import { formatNumber, t } from "@/lib/i18n";
 import { theme } from "@/lib/theme";
-import { isValidHexColor } from "@/lib/validation";
+import { isValidEmail, isValidHexColor, isValidName } from "@/lib/validation";
 import type { Lang, RegisterData } from "@/lib/types";
 
 type PhonePreviewProps = {
@@ -45,15 +45,33 @@ export default function PhonePreview({
   const panelColor: string = isLightBackground ? theme.bg : theme.text;
 
   const restaurantName: string =
-    data.restaurantName.trim() === "" ? t(lang, "preview.emptyName") : data.restaurantName;
+    data.restaurantName.trim() === ""
+      ? t(lang, "preview.emptyName")
+      : isValidName(data.restaurantName)
+        ? data.restaurantName
+        : t(lang, "field.restaurantName.placeholder");
 
   const chosenPlan = PLANS.find((plan) => plan.id === data.planId) ?? null;
   const chosenDuration = data.durationMonths;
 
+  const ownerName: string =
+    data.owner.fullName.trim() === ""
+      ? ""
+      : isValidName(data.owner.fullName)
+        ? data.owner.fullName
+        : t(lang, "field.ownerName.placeholder");
+
+  const ownerEmail: string =
+    data.owner.email.trim() === ""
+      ? ""
+      : isValidEmail(data.owner.email)
+        ? data.owner.email
+        : t(lang, "field.email.placeholder");
+
   const infoRows: Array<{ label: string; value: string }> = [
-    { label: t(lang, "preview.owner"), value: data.owner.fullName.trim() },
+    { label: t(lang, "preview.owner"), value: ownerName },
     { label: t(lang, "preview.phone"), value: data.owner.phone.trim() },
-    { label: t(lang, "preview.email"), value: data.owner.email.trim() },
+    { label: t(lang, "preview.email"), value: ownerEmail },
   ];
 
   /** Opens the menu file that the visitor chose, straight from the browser. */

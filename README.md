@@ -76,6 +76,7 @@ npm run dev
 - **Logo:** currently in Step 1 only (planned to move later). Step 2 shows it read-only with a "Change" button that goes back to Step 1.
 - **Colors:** the light palette in `lib/theme.ts` is confirmed.
 - **Menu:** upload is required in Step 1 (`error.menuMissing`).
+- **Validation:** restaurant, owner and branch names must be 2 to 60 Arabic or Latin letters, spaces, hyphen, apostrophe or dot. Emails must match the strict email pattern. A branch closing time must differ from its opening time (overnight hours are allowed). Errors show on blur and on Next, and the preview shows a placeholder instead of an invalid value.
 - **Mocked parts:** recommended palettes, plans, features, submit flow, local logo/menu preview, and map styling.
 - **Map:** OpenStreetMap tiles and Nominatim geocoding. Nominatim allows at most 1 request per second. Do not call it on every keystroke or mouse move.
 - **Language:** switch between Arabic and English in the top bar. Switching language never clears form data. All text lives in `lib/i18n.ts`. To add a language, add its keys to `lib/i18n.ts` and update the helpers.
