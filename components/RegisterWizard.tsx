@@ -12,7 +12,6 @@ import Step1MainInfo from "./steps/Step1MainInfo";
 import Step2Identity from "./steps/Step2Identity";
 import Step3Branches from "./steps/Step3Branches";
 import Step4Package from "./steps/Step4Package";
-import StepPayment from "./steps/StepPayment";
 import TopBar from "./TopBar";
 import Button from "./ui/Button";
 import { STEP_ORDER, TOTAL_STEPS } from "@/lib/constants";
@@ -31,7 +30,7 @@ const INITIAL_DATA: RegisterData = {
   brand: { primaryColor: "", backgroundColor: "", accentColor: "" },
   branches: [],
   planId: null,
-  billingCycle: "monthly",
+  durationMonths: null,
 };
 
 function RegisterWizardInner(): ReactElement {
@@ -157,11 +156,6 @@ function RegisterWizardInner(): ReactElement {
 
   /** Checks the step and moves to the next one when everything is fine. */
   function handleNext(): void {
-    const key = getCurrentStepKey();
-    // Payment is handled separately by its own Pay button
-    if (key === "payment") {
-      return;
-    }
     const stepErrors: StepErrors = validateStep(currentStep, data, lang);
     setErrors(stepErrors);
 
@@ -218,7 +212,7 @@ function RegisterWizardInner(): ReactElement {
 
   return (
     <div className="min-h-screen bg-page">
-      <header className="sticky top-0 z-30 border-b border-line bg-card/95 backdrop-blur">
+      <header className="sticky top-0 z-[1100] border-b border-line bg-card">
         <div className="mx-auto max-w-7xl px-4 py-4 sm:px-6 lg:px-8">
           <TopBar lang={lang} onToggleLang={handleToggleLang} />
           <StepIndicator currentStep={currentStep} lang={lang} />
@@ -279,9 +273,6 @@ function RegisterWizardInner(): ReactElement {
 
                 {(() => {
                   const key = getCurrentStepKey();
-                  if (key === "payment") {
-                    return <StepPayment data={data} errors={errors} lang={lang} onChange={handleChange} />;
-                  }
                   if (key === "main") {
                     return (
                       <Step1MainInfo
@@ -330,9 +321,6 @@ function RegisterWizardInner(): ReactElement {
                   {(() => {
                     const key = getCurrentStepKey();
                     const isLast = STEP_ORDER[STEP_ORDER.length - 1] === key;
-                    if (key === "payment") {
-                      return <span />;
-                    }
                     if (!isLast) {
                       return <Button onClick={handleNext}>{t(lang, "btn.next")}</Button>;
                     }

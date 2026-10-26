@@ -27,7 +27,6 @@ export const translations = {
 
   // ----- Steps -----
   "step.counter": { ar: "الخطوة {current} من {total}", en: "Step {current} of {total}" },
-  "step.payment": { ar: "الدفع", en: "Payment" },
   "step.main": { ar: "البيانات الأساسية", en: "Main Info" },
   "step.identity": { ar: "هوية المطعم", en: "Restaurant Identity" },
   "step.branches": { ar: "الفروع", en: "Branches" },
@@ -43,17 +42,6 @@ export const translations = {
   "btn.finish": { ar: "اتمام التسجيل", en: "Complete Registration" },
   "btn.change": { ar: "تغيير", en: "Change" },
   "btn.remove": { ar: "حذف", en: "Remove" },
-
-  // ----- Payment -----
-  "payment.summary": { ar: "ملخص الدفع", en: "Payment summary" },
-  "payment.amount": { ar: "المبلغ", en: "Amount" },
-  "payment.payNow": { ar: "ادفع الآن", en: "Pay now" },
-  "payment.redirecting": { ar: "جاري تحويلك لصفحة الدفع...", en: "Redirecting to the payment page..." },
-  "payment.choosePlanFirst": { ar: "اختر الباقة أولاً", en: "Choose a package first" },
-  "payment.completeFirst": { ar: "أكمل البيانات أولاً", en: "Complete the earlier steps first" },
-  "payment.success": { ar: "تم الدفع بنجاح", en: "Payment successful" },
-  "payment.failed": { ar: "فشل الدفع، حاول مرة أخرى", en: "Payment failed, please try again" },
-  "payment.backToRegister": { ar: "رجوع للتسجيل", en: "Back to registration" },
 
   // ----- Live preview -----
   "preview.label": { ar: "معاينة مباشرة", en: "Live Preview" },
@@ -71,7 +59,6 @@ export const translations = {
   "preview.viewMenu": { ar: "عرض المنيو", en: "View menu" },
   "preview.noMenu": { ar: "لم يتم رفع المنيو بعد", en: "No menu uploaded yet" },
   "preview.plan": { ar: "الباقة", en: "Package" },
-  "preview.noPlan": { ar: "لم يتم اختيار باقة بعد", en: "No plan selected yet" },
   "preview.hours": { ar: "مواعيد العمل", en: "Opening hours" },
   "preview.location": { ar: "الموقع", en: "Location" },
   "preview.noLocation": { ar: "لم يتم تحديد الموقع بعد", en: "Location not set yet" },
@@ -147,13 +134,18 @@ export const translations = {
 
   // ----- Fields of step 4 -----
   "package.heading": { ar: "اختر الباقة المناسبة لمطعمك", en: "Choose the right package for your restaurant" },
-  "package.monthly": { ar: "شهري", en: "Monthly" },
-  "package.yearly": { ar: "سنوي", en: "Yearly" },
+  "package.duration": { ar: "مدة الاشتراك", en: "Subscription duration" },
+  "package.months3": { ar: "3 شهور", en: "3 months" },
+  "package.months6": { ar: "6 شهور", en: "6 months" },
+  "package.months12": { ar: "12 شهر", en: "12 months" },
+  "package.plan.starter": { ar: "Starter", en: "Starter" },
+  "package.plan.growth": { ar: "Growth", en: "Growth" },
+  "package.feature.ai": { ar: "ميزات الذكاء الاصطناعي", en: "AI features" },
+  "package.perEgp": { ar: "ج.م", en: "EGP" },
+  "package.noSelection": { ar: "لم يتم اختيار باقة بعد", en: "No package selected yet" },
   "package.selected": { ar: "تم الاختيار", en: "Selected" },
   "package.popular": { ar: "رائج", en: "Popular" },
   "package.mostOrdered": { ar: "الاكثر طلبا", en: "Most ordered" },
-  "package.perYear": { ar: "ج.م/ سنة", en: "EGP/year" },
-  "package.perMonth": { ar: "ج.م/ شهر", en: "EGP/month" },
   "package.features": { ar: "المميزات", en: "Features" },
 
   // ----- Errors -----
@@ -168,6 +160,8 @@ export const translations = {
   "error.color": { ar: "قيمة اللون غير صحيحة، استخدم صيغة #RRGGBB", en: "Invalid color value, use the #RRGGBB format" },
   "error.fileType": { ar: "صيغة الملف غير مدعومة", en: "Unsupported file format" },
   "error.fileSize": { ar: "حجم الملف أكبر من الحد المسموح", en: "The file is bigger than the allowed size" },
+  "error.choosePlan": { ar: "اختر الباقة", en: "Choose a package" },
+  "error.chooseDuration": { ar: "اختر مدة الاشتراك", en: "Choose the subscription duration" },
   "form.errorSummary": {
     ar: "يوجد حقول ناقصة أو غير صحيحة، راجع الحقول المميزة باللون الأحمر.",
     en: "Some fields are missing or invalid, please check the highlighted fields.",

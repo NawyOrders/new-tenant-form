@@ -2,10 +2,10 @@
 // the mock plans, the features of the plans, and the map defaults.
 
 import { theme } from "./theme";
-import type { BillingCycle, Branch, BilingualText, Lang, Plan, RecommendedPalette, StepInfo } from "./types";
+import type { Branch, BilingualText, DurationMonths, Plan, RecommendedPalette, StepInfo } from "./types";
 
-/** The ordered list of step keys. Moving payment only means reordering this array. */
-export const STEP_ORDER: string[] = ["main", "identity", "branches", "package", "payment"];
+/** The ordered list of step keys. Reordering this array moves a step. */
+export const STEP_ORDER: string[] = ["main", "identity", "branches", "package"];
 
 /** The number of steps of the wizard. */
 export const TOTAL_STEPS = STEP_ORDER.length;
@@ -93,7 +93,7 @@ export const RECOMMENDED_PALETTES: RecommendedPalette[] = [
   },
 ];
 
-/** The features every plan has. MOCK data for now, they will come from the backend later. */
+/** The features shared by both plans. MOCK data for now, they will come from the backend later. */
 export const FEATURES: Array<{ id: string; label: BilingualText }> = [
   { id: "apps", label: { ar: "تطبيق للاندرويد والايفون", en: "Android and iOS app" } },
   { id: "reports", label: { ar: "تقارير المبيعات اليومية", en: "Daily sales reports" } },
@@ -101,32 +101,26 @@ export const FEATURES: Array<{ id: string; label: BilingualText }> = [
   { id: "support", label: { ar: "دعم عبر البريد الالكتروني", en: "Email support" } },
 ];
 
+/** The allowed subscription durations, in months. */
+export const DURATIONS: DurationMonths[] = [3, 6, 12];
+
 /** The plans of step 4. MOCK data for now, they will come from the backend later. */
 export const PLANS: Plan[] = [
   {
     id: "starter",
-    name: { ar: "ستارتير", en: "Starter" },
-    description: { ar: "للمطاعم الي بتبدأ رحلتها", en: "For restaurants just starting out" },
-    yearlyPrice: 32000,
+    prices: { 3: 15000, 6: 32000, 12: 60000 },
     tagKeys: [],
   },
   {
     id: "growth",
-    name: { ar: "نمو", en: "Growth" },
-    description: { ar: "للمطاعم الي بتكبر وبتتوسع", en: "For restaurants that are growing" },
-    yearlyPrice: 64000,
+    prices: { 3: 17000, 6: 34000, 12: 62000 },
     tagKeys: ["package.popular", "package.mostOrdered"],
   },
 ];
 
-/** The monthly price of a yearly price: the yearly price divided by 12. */
-export function getMonthlyPrice(yearlyPrice: number): number {
-  return Math.round(yearlyPrice / 12);
-}
-
-/** The price of a plan for the chosen billing cycle. */
-export function getPlanPrice(plan: Plan, billingCycle: BillingCycle): number {
-  return billingCycle === "monthly" ? getMonthlyPrice(plan.yearlyPrice) : plan.yearlyPrice;
+/** The total price of a plan for the chosen duration. */
+export function getPlanPrice(plan: Plan, duration: DurationMonths): number {
+  return plan.prices[duration];
 }
 
 /** A new empty branch, with the default opening hours. */

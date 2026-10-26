@@ -1,5 +1,7 @@
 node_modules
 .next
-agent.md
+AGENTS.md
 .env
 .env.local
+design.md
+task.md

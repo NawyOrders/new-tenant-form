@@ -14,6 +14,13 @@ const MOCK_DELAY_MS = 900;
 
 /** Builds the body that will be sent to the backend when it is ready. */
 export function buildSubmitPayload(data: RegisterData): SubmitPayload {
+  const planId = data.planId;
+  const durationMonths = data.durationMonths;
+
+  if (planId === null || durationMonths === null) {
+    throw new Error("The package is not selected");
+  }
+
   return {
     restaurant: { name: data.restaurantName.trim() },
     owner: {
@@ -35,8 +42,8 @@ export function buildSubmitPayload(data: RegisterData): SubmitPayload {
       closingTime: branch.closingTime,
     })),
     package: {
-      planId: data.planId ?? "",
-      billingCycle: data.billingCycle,
+      planId,
+      durationMonths,
     },
   };
 }

@@ -26,7 +26,7 @@ export function getDevFixtures(): Partial<RegisterData> {
       },
     ],
     planId,
-    billingCycle: "yearly",
+    durationMonths: 12,
     logoFile: null,
     menuFile: null,
   };

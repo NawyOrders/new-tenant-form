@@ -2,7 +2,7 @@
 // Each function returns the errors of the step: an empty object means the step is valid.
 
 import { t } from "./i18n";
-import { MAX_BRANCHES } from "./constants";
+import { MAX_BRANCHES, STEP_ORDER } from "./constants";
 import type { Lang, RegisterData } from "./types";
 
 /** True when the text looks like #RRGGBB. */
@@ -108,18 +108,20 @@ export function validateStep3(data: RegisterData, lang: Lang): Record<string, st
   return errors;
 }
 
-/** Step 4: the package. A plan must be chosen. */
+/** Step 4: the package. A plan and a duration must be chosen. */
 export function validateStep4(data: RegisterData, lang: Lang): Record<string, string> {
   const errors: Record<string, string> = {};
 
   if (data.planId === null) {
-    errors["planId"] = t(lang, "error.required");
+    errors["planId"] = t(lang, "error.choosePlan");
+  }
+
+  if (data.durationMonths === null) {
+    errors["durationMonths"] = t(lang, "error.chooseDuration");
   }
 
   return errors;
 }
-
-import { STEP_ORDER } from "./constants";
 
 /** Runs the check of one step. */
 export function validateStep(step: number, data: RegisterData, lang: Lang): Record<string, string> {
@@ -128,10 +130,5 @@ export function validateStep(step: number, data: RegisterData, lang: Lang): Reco
   if (key === "identity") return validateStep2(data, lang);
   if (key === "branches") return validateStep3(data, lang);
   if (key === "package") return validateStep4(data, lang);
-  if (key === "payment") return {};
-  if (step === 1) return validateStep1(data, lang);
-  if (step === 2) return validateStep2(data, lang);
-  if (step === 3) return validateStep3(data, lang);
-  if (step === 4) return validateStep4(data, lang);
   return {};
 }

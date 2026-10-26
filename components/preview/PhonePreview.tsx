@@ -48,6 +48,7 @@ export default function PhonePreview({
     data.restaurantName.trim() === "" ? t(lang, "preview.emptyName") : data.restaurantName;
 
   const chosenPlan = PLANS.find((plan) => plan.id === data.planId) ?? null;
+  const chosenDuration = data.durationMonths;
 
   const infoRows: Array<{ label: string; value: string }> = [
     { label: t(lang, "preview.owner"), value: data.owner.fullName.trim() },
@@ -181,14 +182,23 @@ export default function PhonePreview({
                 {t(lang, "preview.plan")}
               </p>
 
-              {chosenPlan === null ? (
+              {chosenPlan === null || chosenDuration === null ? (
                 <p className="mt-1 text-[11px]" style={{ color: mutedColor }}>
-                  {t(lang, "preview.noPlan")}
+                  {t(lang, "package.noSelection")}
                 </p>
               ) : (
                 <p className="mt-1 text-[11px] font-semibold">
-                  {chosenPlan.name[lang]} — {formatNumber(lang, getPlanPrice(chosenPlan, data.billingCycle))}{" "}
-                  {data.billingCycle === "monthly" ? t(lang, "package.perMonth") : t(lang, "package.perYear")}
+                  {chosenPlan.id === "starter"
+                    ? t(lang, "package.plan.starter")
+                    : t(lang, "package.plan.growth")}{" "}
+                  —{" "}
+                  {chosenDuration === 3
+                    ? t(lang, "package.months3")
+                    : chosenDuration === 6
+                      ? t(lang, "package.months6")
+                      : t(lang, "package.months12")}{" "}
+                  — {formatNumber(lang, getPlanPrice(chosenPlan, chosenDuration))}{" "}
+                  {t(lang, "package.perEgp")}
                 </p>
               )}
             </section>

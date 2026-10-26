@@ -11,6 +11,16 @@ A bilingual (Arabic and English) restaurant registration web app. It is a 4-step
 - Local file preview for logo and menu (no server upload in this version)
 - Mock submit with loading, success and error states
 
+## Plans
+The plans are mock data in `lib/constants.ts`. Each plan has three subscription durations.
+
+| Plan | 3 months | 6 months | 12 months |
+| --- | --- | --- | --- |
+| Starter | 15,000 EGP | 32,000 EGP | 60,000 EGP |
+| Growth | 17,000 EGP | 34,000 EGP | 62,000 EGP |
+
+Both plans include: Android and iOS app, daily sales reports, menu and item management, and email support. Growth also includes AI features.
+
 ## Tech stack
 - Next.js (App Router), TypeScript (strict), Tailwind CSS
 - leaflet, react-leaflet

@@ -3,8 +3,11 @@
 /** The two languages of the app. */
 export type Lang = "ar" | "en";
 
-/** How the restaurant pays for the plan. */
-export type BillingCycle = "monthly" | "yearly";
+/** The two plans of the app. */
+export type PlanId = "starter" | "growth";
+
+/** The allowed subscription durations, in months. */
+export type DurationMonths = 3 | 6 | 12;
 
 /** One restaurant branch (the app allows a maximum of 2). */
 export type Branch = {
@@ -39,8 +42,8 @@ export type RegisterData = {
   owner: OwnerInfo;
   brand: BrandColors;
   branches: Branch[]; // max 2
-  planId: string | null;
-  billingCycle: BillingCycle;
+  planId: PlanId | null;
+  durationMonths: DurationMonths | null;
 };
 
 /** A text that exists in both languages (used by the mock plans and features). */
@@ -51,10 +54,9 @@ export type BilingualText = {
 
 /** One subscription plan (mock data for now, from lib/constants.ts). */
 export type Plan = {
-  id: string;
-  name: BilingualText;
-  description: BilingualText;
-  yearlyPrice: number; // in Egyptian pounds
+  id: PlanId;
+  /** The total price in Egyptian pounds for each allowed duration. */
+  prices: Record<DurationMonths, number>;
   /** Translation keys of the badges of the plan (for example "package.popular"). */
   tagKeys: string[];
 };
@@ -112,5 +114,5 @@ export type SubmitPayload = {
     openingTime: string;
     closingTime: string;
   }>;
-  package: { planId: string; billingCycle: BillingCycle };
+  package: { planId: PlanId; durationMonths: DurationMonths };
 };
