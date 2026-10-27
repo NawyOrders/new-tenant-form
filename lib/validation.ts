@@ -2,6 +2,7 @@
 // Each function returns the errors of the step: an empty object means the step is valid.
 
 import { t } from "./i18n";
+import type { TranslationKey } from "./i18n";
 import { MAX_BRANCHES, STEP_ORDER } from "./constants";
 import type { Lang, RegisterData } from "./types";
 
@@ -19,40 +20,80 @@ export function isValidEgyptianPhone(value: string): boolean {
 
 const NAME_MIN_LENGTH = 2;
 const NAME_MAX_LENGTH = 60;
-// Arabic letters, Latin letters, spaces, hyphen, apostrophe and dot only.
-const NAME_ALLOWED_CHARS = /^[\u0600-\u06FFA-Za-z .'-]+$/;
-const NAME_HAS_LETTER = /[\u0600-\u06FFA-Za-z]/;
 
-/** True when the name is 2 to 60 characters and follows the name rules. */
-export function isValidName(value: string): boolean {
+/** "any" allows both scripts (owner and branch names), "ar" and "en" allow one script. */
+type NameScript = "any" | "ar" | "en";
+
+type NameRules = {
+  allowedChars: RegExp;
+  hasLetter: RegExp;
+  invalidKey: TranslationKey;
+};
+
+const NAME_RULES: Record<NameScript, NameRules> = {
+  any: {
+    allowedChars: /^[\u0600-\u06FFA-Za-z .'-]+$/,
+    hasLetter: /[\u0600-\u06FFA-Za-z]/,
+    invalidKey: "error.name.invalid",
+  },
+  ar: {
+    allowedChars: /^[\u0600-\u06FF .'-]+$/,
+    hasLetter: /[\u0600-\u06FF]/,
+    invalidKey: "error.nameAr.invalid",
+  },
+  en: {
+    allowedChars: /^[A-Za-z .'-]+$/,
+    hasLetter: /[A-Za-z]/,
+    invalidKey: "error.nameEn.invalid",
+  },
+};
+
+/** True when the name is 2 to 60 characters and follows the rules of one script. */
+function isValidNameFor(value: string, script: NameScript): boolean {
   const trimmed: string = value.trim();
+  const rules: NameRules = NAME_RULES[script];
 
   return (
     trimmed.length >= NAME_MIN_LENGTH &&
     trimmed.length <= NAME_MAX_LENGTH &&
-    NAME_ALLOWED_CHARS.test(trimmed) &&
-    NAME_HAS_LETTER.test(trimmed)
+    rules.allowedChars.test(trimmed) &&
+    rules.hasLetter.test(trimmed)
   );
 }
 
+/** True when the name fits any script (owner and branch names). */
+export function isValidName(value: string): boolean {
+  return isValidNameFor(value, "any");
+}
+
+/** True when the name uses Arabic letters only. */
+export function isValidArabicName(value: string): boolean {
+  return isValidNameFor(value, "ar");
+}
+
+/** True when the name uses Latin letters only. */
+export function isValidEnglishName(value: string): boolean {
+  return isValidNameFor(value, "en");
+}
+
 /** The error key of an invalid name: the length rule first, then the characters rule. */
-function getNameErrorKey(value: string): "error.name.length" | "error.name.invalid" {
+function getNameErrorKey(value: string, script: NameScript): TranslationKey {
   const trimmed: string = value.trim();
 
   if (trimmed.length < NAME_MIN_LENGTH || trimmed.length > NAME_MAX_LENGTH) {
     return "error.name.length";
   }
 
-  return "error.name.invalid";
+  return NAME_RULES[script].invalidKey;
 }
 
 /** The error message of a name field, empty when the value is valid. */
-function getNameError(value: string, lang: Lang): string {
+function getNameError(value: string, lang: Lang, script: NameScript = "any"): string {
   if (value.trim() === "") {
     return t(lang, "error.required");
   }
 
-  return isValidName(value) ? "" : t(lang, getNameErrorKey(value));
+  return isValidNameFor(value, script) ? "" : t(lang, getNameErrorKey(value, script));
 }
 
 /** True when the email looks like an email address. */
@@ -64,9 +105,14 @@ export function isValidEmail(value: string): boolean {
 export function validateStep1(data: RegisterData, lang: Lang): Record<string, string> {
   const errors: Record<string, string> = {};
 
-  const restaurantNameError: string = getNameError(data.restaurantName, lang);
-  if (restaurantNameError !== "") {
-    errors["restaurantName"] = restaurantNameError;
+  const restaurantNameArError: string = getNameError(data.restaurantNameAr, lang, "ar");
+  if (restaurantNameArError !== "") {
+    errors["restaurantNameAr"] = restaurantNameArError;
+  }
+
+  const restaurantNameEnError: string = getNameError(data.restaurantNameEn, lang, "en");
+  if (restaurantNameEnError !== "") {
+    errors["restaurantNameEn"] = restaurantNameEnError;
   }
 
   if (data.logoFile === null) {
@@ -176,8 +222,12 @@ export function validateStep(step: number, data: RegisterData, lang: Lang): Reco
 
 /** The error of one field, empty when the field is valid. Used when the visitor leaves a field. */
 export function getFieldError(field: string, data: RegisterData, lang: Lang): string {
-  if (field === "restaurantName") {
-    return getNameError(data.restaurantName, lang);
+  if (field === "restaurantNameAr") {
+    return getNameError(data.restaurantNameAr, lang, "ar");
+  }
+
+  if (field === "restaurantNameEn") {
+    return getNameError(data.restaurantNameEn, lang, "en");
   }
 
   if (field === "owner.fullName") {

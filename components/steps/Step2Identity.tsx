@@ -1,12 +1,11 @@
-// This file is step 2 "هوية المطعم": it shows the logo of step 1 (read only), lets the
-// visitor edit the restaurant name, and lets them choose the colors of the brand.
+// This file is step 2 "هوية المطعم": it shows the logo of step 1 (read only) and lets the
+// visitor choose the colors of the brand.
 // There is NO upload control here: to change the logo the visitor goes back to step 1.
 
 "use client";
 
 import type { ReactElement } from "react";
 import Button from "@/components/ui/Button";
-import TextInput from "@/components/ui/TextInput";
 import { RECOMMENDED_PALETTES } from "@/lib/constants";
 import { t } from "@/lib/i18n";
 import { theme } from "@/lib/theme";
@@ -37,16 +36,6 @@ export default function Step2Identity({
       <h2 className="text-xl font-semibold leading-7 text-ink">{t(lang, "step.2")}</h2>
 
       <div className="mt-6 space-y-6">
-        <TextInput
-          label={t(lang, "field.restaurantName")}
-          name="restaurantName"
-          placeholder={t(lang, "field.restaurantName.placeholder")}
-          value={data.restaurantName}
-          error={errors["restaurantName"]}
-          required
-          onChange={(value) => onChange({ restaurantName: value })}
-        />
-
         {/* The logo is read only here. To change it, the visitor goes back to step 1. */}
         <div className="flex items-center gap-4 rounded-panel border border-line bg-soft/40 p-4">
           {logoUrl === null ? (

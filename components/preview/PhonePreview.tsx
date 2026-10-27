@@ -8,8 +8,9 @@ import type { ReactElement } from "react";
 import PreviewBranch from "./PreviewBranch";
 import { DEFAULT_BRAND_COLORS } from "@/lib/constants";
 import { formatNumber, t } from "@/lib/i18n";
+import type { TranslationKey } from "@/lib/i18n";
 import { theme } from "@/lib/theme";
-import { isValidEmail, isValidHexColor, isValidName } from "@/lib/validation";
+import { isValidArabicName, isValidEmail, isValidEnglishName, isValidHexColor, isValidName } from "@/lib/validation";
 import type { ActiveSubscriptionOffer, Lang, RegisterData } from "@/lib/types";
 
 type PhonePreviewProps = {
@@ -47,12 +48,8 @@ export default function PhonePreview({
   const mutedColor: string = isLightBackground ? theme.textMuted : theme.bgSecondary;
   const panelColor: string = isLightBackground ? theme.bg : theme.text;
 
-  const restaurantName: string =
-    data.restaurantName.trim() === ""
-      ? t(lang, "preview.emptyName")
-      : isValidName(data.restaurantName)
-        ? data.restaurantName
-        : t(lang, "field.restaurantName.placeholder");
+  const restaurantNameAr: string = previewName(data.restaurantNameAr, "ar", lang);
+  const restaurantNameEn: string = previewName(data.restaurantNameEn, "en", lang);
 
   const ownerName: string =
     data.owner.fullName.trim() === ""
@@ -99,7 +96,7 @@ export default function PhonePreview({
             <div className="mt-3 flex items-center gap-3">
               <span className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-panel bg-card/90 text-base font-semibold text-ink">
                 {logoUrl === null ? (
-                  restaurantName.charAt(0)
+                  restaurantNameAr.charAt(0)
                 ) : (
                   // The logo is a local file, so a normal <img> is the right element here.
                   // eslint-disable-next-line @next/next/no-img-element -- a local blob address cannot go through next/image
@@ -108,7 +105,10 @@ export default function PhonePreview({
               </span>
 
               <span className="min-w-0 flex-1">
-                <span className="block truncate text-sm font-semibold text-card">{restaurantName}</span>
+                <span className="block truncate text-sm font-semibold text-card">{restaurantNameAr}</span>
+                <span className="block truncate text-[11px] font-medium text-card/90" dir="ltr">
+                  {restaurantNameEn}
+                </span>
                 <span className="block text-[11px] text-card/85">
                   {data.branches.length} {t(lang, "preview.branches")} · {t(lang, "app.brand")}
                 </span>
@@ -238,6 +238,20 @@ function durationLabel(lang: Lang, months: number): string {
   if (months === 6) return t(lang, "package.months6");
   if (months === 12) return t(lang, "package.months12");
   return t(lang, "package.monthsCount", { count: months });
+}
+
+/** The name shown in the preview: the real name, or its placeholder when empty or invalid. */
+function previewName(value: string, script: "ar" | "en", lang: Lang): string {
+  const placeholderKey: TranslationKey =
+    script === "ar" ? "field.restaurantNameAr.placeholder" : "field.restaurantNameEn.placeholder";
+
+  if (value.trim() === "") {
+    return t(lang, placeholderKey);
+  }
+
+  const isValid: boolean = script === "ar" ? isValidArabicName(value) : isValidEnglishName(value);
+
+  return isValid ? value : t(lang, placeholderKey);
 }
 
 /** True when the color is light, so the text on top of it must be dark. */

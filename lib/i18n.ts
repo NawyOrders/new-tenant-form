@@ -62,12 +62,13 @@ export const translations = {
   "preview.hours": { ar: "مواعيد العمل", en: "Opening hours" },
   "preview.location": { ar: "الموقع", en: "Location" },
   "preview.noLocation": { ar: "لم يتم تحديد الموقع بعد", en: "Location not set yet" },
-  "preview.emptyName": { ar: "اسم المطعم", en: "Restaurant name" },
   "preview.emptyValue": { ar: "—", en: "—" },
 
   // ----- Fields of step 1 -----
-  "field.restaurantName": { ar: "اسم المطعم", en: "Restaurant name" },
-  "field.restaurantName.placeholder": { ar: "مثال: مطعم كذا", en: "e.g. My Restaurant" },
+  "field.restaurantNameAr": { ar: "اسم المطعم بالعربي", en: "Restaurant name (Arabic)" },
+  "field.restaurantNameAr.placeholder": { ar: "مثال: مطعم كذا", en: "مثال: مطعم كذا" },
+  "field.restaurantNameEn": { ar: "اسم المطعم بالإنجليزي", en: "Restaurant name (English)" },
+  "field.restaurantNameEn.placeholder": { ar: "e.g. My Restaurant", en: "e.g. My Restaurant" },
   "field.logo": { ar: "الشعار", en: "Logo" },
   "field.logo.drop": { ar: "اسحب الشعار هنا أو اضغط للرفع", en: "Drag the logo here or click to upload" },
   "field.logo.hint": { ar: "PNG أو JPG أو SVG — بحد أقصى 5 ميجا بايت", en: "PNG, JPG or SVG — max 5 MB" },
@@ -161,6 +162,8 @@ export const translations = {
   "error.email": { ar: "البريد الإلكتروني غير صحيح", en: "Invalid email address" },
   "error.email.invalid": { ar: "أدخل بريد إلكتروني صحيح", en: "Enter a valid email address" },
   "error.name.invalid": { ar: "استخدم حروف عربية أو إنجليزية فقط", en: "Use Arabic or English letters only" },
+  "error.nameAr.invalid": { ar: "استخدم حروف عربية فقط", en: "Use Arabic letters only" },
+  "error.nameEn.invalid": { ar: "استخدم حروف إنجليزية فقط", en: "Use English letters only" },
   "error.name.length": { ar: "الاسم لازم يكون بين 2 و 60 حرف", en: "Name must be 2 to 60 characters" },
   "error.hours.equal": {
     ar: "وقت الغلق لازم يكون مختلف عن وقت الفتح",
@@ -176,18 +179,17 @@ export const translations = {
     en: "Some fields are missing or invalid, please check the highlighted fields.",
   },
 
-  // ----- Submit result -----
-  "success.title": { ar: "تم تسجيل مطعمك بنجاح", en: "Your restaurant is registered" },
-  "success.body": {
-    ar: "شكراً لك، استلمنا بيانات {name} وسيراجعها فريق Nawy Orders ثم يتواصل معك.",
-    en: "Thank you, we received the data of {name} and the Nawy Orders team will review it.",
-  },
-  "success.reference": { ar: "رقم الطلب", en: "Reference number" },
-  "success.mock": {
-    ar: "نسخة تجريبية: البيانات لم يتم ارسالها الى خادم حقيقي بعد، وسيتم ربط الحفظ بقاعدة البيانات لاحقاً.",
-    en: "Demo version: nothing was sent to a real server yet, the real save will be connected later.",
-  },
-  "success.restart": { ar: "تسجيل مطعم آخر", en: "Register another restaurant" },
+  // ----- Uploads and submit -----
+  "upload.uploading": { ar: "جاري رفع الملف...", en: "Uploading file..." },
+  "upload.done": { ar: "تم رفع الملف", en: "File uploaded" },
+  "upload.failed": { ar: "فشل رفع الملف", en: "File upload failed" },
+  "upload.retry": { ar: "إعادة الرفع", en: "Retry upload" },
+  "upload.tooLarge": { ar: "حجم الملف أكبر من المسموح", en: "File is too large" },
+  "submit.loading": { ar: "جاري الإرسال...", en: "Submitting..." },
+  "submit.duplicate": { ar: "تم إرسال هذا الطلب من قبل", en: "This request was already submitted" },
+  "submit.success.title": { ar: "تم إرسال طلبك بنجاح", en: "Your request was submitted" },
+  "submit.success.requestId": { ar: "رقم الطلب", en: "Request ID" },
+  "submit.success.home": { ar: "الرئيسية", en: "Home" },
 } as const;
 
 /** The type of a translation key. */

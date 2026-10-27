@@ -1,7 +1,8 @@
 // This file is the upload area of the app: a drop zone, the name and the size of the chosen
-// file, and a button to remove it. It is used twice in step 1 (the logo and the menu).
+// file, the state of its upload, and a button to remove it. It is used twice in step 1.
 
 import type { ChangeEvent, DragEvent, ReactElement } from "react";
+import type { UploadStatus } from "@/lib/types";
 
 type FileUploadProps = {
   /** The id of the file input. It must be unique in the page. */
@@ -24,6 +25,14 @@ type FileUploadProps = {
   removeLabel: string;
   /** Called with the chosen file, or with null when the file is removed. */
   onSelect: (file: File | null) => void;
+  /** The state of the upload of the chosen file. */
+  uploadStatus: UploadStatus;
+  /** The text of the upload state (uploading, done or failed). */
+  statusText: string;
+  /** The text of the retry button, shown only after a failed upload. */
+  retryLabel: string;
+  /** Called when the visitor wants to upload the same file again. */
+  onRetry: () => void;
 };
 
 export default function FileUpload({
@@ -37,11 +46,18 @@ export default function FileUpload({
   error,
   removeLabel,
   onSelect,
+  uploadStatus,
+  statusText,
+  retryLabel,
+  onRetry,
 }: FileUploadProps): ReactElement {
   const headingId: string = `${id}-heading`;
   const hintId: string = `${id}-hint`;
   const errorId: string = `${id}-error`;
   const hasError: boolean = error !== undefined && error !== "";
+  const showStatus: boolean = file !== null && uploadStatus !== "idle";
+  const statusTone: string =
+    uploadStatus === "failed" ? "text-danger-strong" : uploadStatus === "done" ? "text-success-strong" : "text-muted";
 
   function handleChange(event: ChangeEvent<HTMLInputElement>): void {
     onSelect(event.target.files?.[0] ?? null);
@@ -120,6 +136,28 @@ export default function FileUpload({
           </button>
         </div>
       )}
+
+      {showStatus ? (
+        <div className={`mt-2 flex items-center gap-2 text-xs font-semibold ${statusTone}`}>
+          {uploadStatus === "uploading" ? (
+            <span
+              aria-hidden="true"
+              className="h-3.5 w-3.5 shrink-0 animate-spin rounded-full border-2 border-current border-t-transparent"
+            />
+          ) : null}
+          <span>{statusText}</span>
+
+          {uploadStatus === "failed" ? (
+            <button
+              type="button"
+              onClick={onRetry}
+              className="ms-auto h-8 shrink-0 rounded-panel border border-line bg-card px-3 text-xs font-semibold text-ink transition hover:bg-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+            >
+              {retryLabel}
+            </button>
+          ) : null}
+        </div>
+      ) : null}
 
       {hasError ? (
         <p id={errorId} role="alert" className="mt-1.5 text-xs font-semibold text-danger-strong">

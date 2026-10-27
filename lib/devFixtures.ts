@@ -4,7 +4,14 @@ import type { RegisterData } from "./types";
 
 export function getDevFixtures(): Partial<RegisterData> {
   return {
-    restaurantName: "مطعم تجريبي",
+    restaurantNameAr: "مطعم تجريبي",
+    restaurantNameEn: "Demo Restaurant",
+    logoFile: null,
+    menuFile: null,
+    logoAssetId: null,
+    logoUploadToken: null,
+    menuAssetId: null,
+    menuUploadToken: null,
     owner: { fullName: "أحمد محمود", phone: "01012345678", email: "test@restaurant.com" },
     brand: {
       primaryColor: theme.primary,
@@ -23,7 +30,5 @@ export function getDevFixtures(): Partial<RegisterData> {
       },
     ],
     subscriptionOfferId: null,
-    logoFile: null,
-    menuFile: null,
   };
 }

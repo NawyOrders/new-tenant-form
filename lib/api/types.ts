@@ -1,4 +1,5 @@
-// This file holds the types of the backend response wrapper and of the API errors.
+// This file holds the types of the backend response wrapper, of the API errors,
+// and of the onboarding upload endpoints.
 
 /** The wrapper the backend puts around every response. */
 export type ApiEnvelope<T> = {
@@ -11,3 +12,23 @@ export type ApiEnvelope<T> = {
 
 /** Why an API call failed. */
 export type ApiErrorKind = "network" | "timeout" | "server" | "missing_config";
+
+/** The kind of an onboarding file. TODO: confirm with the backend that 1 is the logo and 2 is the menu. */
+export type UploadFileType = 1 | 2;
+
+/** One file asked for in the upload-urls request. */
+export type UploadRequestFile = {
+  type: UploadFileType;
+  fileName: string;
+  contentType: string;
+  sizeBytes: number;
+};
+
+/** One upload target returned by the upload-urls endpoint. */
+export type UploadUrlItem = {
+  assetId: string;
+  uploadToken: string;
+  uploadUrl: string;
+  contentType: string;
+  maximumSizeBytes: number;
+};

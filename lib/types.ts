@@ -43,13 +43,30 @@ export type BrandColors = {
 
 /** The whole registration form. This is the ONE object kept in the RegisterWizard state. */
 export type RegisterData = {
-  restaurantName: string;
-  logoFile: File | null; // used ONLY for the local preview for now
-  menuFile: File | null; // used ONLY for the local preview for now
+  restaurantNameAr: string;
+  restaurantNameEn: string;
+  logoFile: File | null; // kept for the local preview and for a retry after a failed upload
+  menuFile: File | null; // kept for the local preview and for a retry after a failed upload
+  logoAssetId: string | null;
+  logoUploadToken: string | null;
+  menuAssetId: string | null;
+  menuUploadToken: string | null;
   owner: OwnerInfo;
   brand: BrandColors;
   branches: Branch[]; // max 2
   subscriptionOfferId: string | null;
+};
+
+/** The state of one file upload (the logo or the menu). */
+export type UploadStatus = "idle" | "uploading" | "done" | "failed";
+
+/** The message key shown when an upload fails. */
+export type UploadErrorKey = "upload.tooLarge" | "upload.failed" | "error.apiMissingConfig";
+
+/** The state of one file upload, kept beside the file in the wizard. */
+export type UploadState = {
+  status: UploadStatus;
+  errorKey: UploadErrorKey | null;
 };
 
 /** A text that exists in both languages (used by the mock features and palettes). */
@@ -88,28 +105,39 @@ export type GeoAddress = {
 /** Field errors: key = field name (for example "owner.phone"), value = the error message. */
 export type StepErrors = Record<string, string>;
 
-/** What the mock submit function returns. */
+/** What the backend returns after a successful submit. */
 export type SubmitResult = {
-  success: boolean;
-  referenceId: string;
+  requestId: string;
 };
 
-/** The body that will be sent to the backend when it is ready. */
-export type SubmitPayload = {
-  restaurant: { name: string };
-  owner: { fullName: string; phone: string; email: string };
-  brand: {
-    primaryColor: string;
-    backgroundColor: string;
-    accentColor: string | null;
-  };
-  branches: Array<{
-    name: string;
-    address: string;
-    latitude: number | null;
-    longitude: number | null;
-    openingTime: string;
-    closingTime: string;
-  }>;
-  package: { subscriptionOfferId: string };
+/** One branch in the body of the registration request. */
+export type OnboardingBranchPayload = {
+  name: string;
+  phone: string;
+  addressLine1: string;
+  addressLine2: string | null;
+  city: string | null;
+  region: string | null;
+  countryCode: string;
+  postalCode: string | null;
+  latitude: number;
+  longitude: number;
+  isPrimary: boolean;
+  sortOrder: number;
+  workingHours: null;
+};
+
+/** The body of POST /api/v1/onboarding-requests. */
+export type OnboardingSubmitPayload = {
+  restaurantNameEn: string;
+  restaurantNameAr: string;
+  ownerFullName: string;
+  ownerEmail: string;
+  ownerPhone: string;
+  subscriptionOfferId: string;
+  logoAssetId: string;
+  logoUploadToken: string;
+  menuAssetId: string;
+  menuUploadToken: string;
+  branches: OnboardingBranchPayload[];
 };

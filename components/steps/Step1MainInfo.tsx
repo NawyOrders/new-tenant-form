@@ -1,5 +1,5 @@
-// This file is step 1 "البيانات الاساسية": the name of the restaurant, the logo, the menu,
-// and the details of the owner.
+// This file is step 1 "البيانات الاساسية": the Arabic and English names of the restaurant,
+// the logo, the menu, and the details of the owner.
 // The logo and the menu are TWO different fields with two different rules, so they have two
 // separate upload areas and they never share one.
 
@@ -18,7 +18,7 @@ import {
   MAX_MENU_SIZE_MB,
 } from "@/lib/constants";
 import { t } from "@/lib/i18n";
-import type { Lang, RegisterData, StepErrors } from "@/lib/types";
+import type { Lang, RegisterData, StepErrors, UploadState } from "@/lib/types";
 
 type Step1MainInfoProps = {
   data: RegisterData;
@@ -28,9 +28,21 @@ type Step1MainInfoProps = {
   logoUrl: string | null;
   /** The local picture of the menu, null when the menu is a PDF file. */
   menuUrl: string | null;
+  /** The state of the logo upload. */
+  logoUpload: UploadState;
+  /** The state of the menu upload. */
+  menuUpload: UploadState;
   onChange: (patch: Partial<RegisterData>) => void;
   /** Called with the field key when a validated field loses focus. */
   onBlurField: (field: string) => void;
+  /** Keeps the logo and starts its upload (null removes it). */
+  onSelectLogo: (file: File | null) => void;
+  /** Keeps the menu and starts its upload (null removes it). */
+  onSelectMenu: (file: File | null) => void;
+  /** Uploads the same logo again after a failure. */
+  onRetryLogo: () => void;
+  /** Uploads the same menu again after a failure. */
+  onRetryMenu: () => void;
 };
 
 export default function Step1MainInfo({
@@ -39,16 +51,22 @@ export default function Step1MainInfo({
   lang,
   logoUrl,
   menuUrl,
+  logoUpload,
+  menuUpload,
   onChange,
   onBlurField,
+  onSelectLogo,
+  onSelectMenu,
+  onRetryLogo,
+  onRetryMenu,
 }: Step1MainInfoProps): ReactElement {
   const [fileError, setFileError] = useState<{ logo: string; menu: string }>({ logo: "", menu: "" });
 
-  /** Checks the rules of the logo, then keeps the file in the form state. */
+  /** Checks the rules of the logo, then hands the file to the upload. */
   function handleLogoFile(file: File | null): void {
     if (file === null) {
       setFileError({ ...fileError, logo: "" });
-      onChange({ logoFile: null });
+      onSelectLogo(null);
       return;
     }
 
@@ -63,16 +81,14 @@ export default function Step1MainInfo({
     }
 
     setFileError({ ...fileError, logo: "" });
-    // The logo is kept in the state for the live preview ONLY.
-    // It is NOT uploaded anywhere yet: the real upload will be connected when the backend is ready.
-    onChange({ logoFile: file });
+    onSelectLogo(file);
   }
 
-  /** Checks the rules of the menu, then keeps the file in the form state. */
+  /** Checks the rules of the menu, then hands the file to the upload. */
   function handleMenuFile(file: File | null): void {
     if (file === null) {
       setFileError({ ...fileError, menu: "" });
-      onChange({ menuFile: null });
+      onSelectMenu(null);
       return;
     }
 
@@ -87,9 +103,7 @@ export default function Step1MainInfo({
     }
 
     setFileError({ ...fileError, menu: "" });
-    // The menu file is kept in the state for the live preview ONLY.
-    // It is NOT uploaded anywhere yet: the real upload will be connected when the backend is ready.
-    onChange({ menuFile: file });
+    onSelectMenu(file);
   }
 
   const logoError: string = fileError.logo !== "" ? fileError.logo : (errors["logoFile"] ?? "");
@@ -104,14 +118,26 @@ export default function Step1MainInfo({
 
       <div className="mt-6 space-y-5">
         <TextInput
-          label={t(lang, "field.restaurantName")}
-          name="restaurantName"
-          placeholder={t(lang, "field.restaurantName.placeholder")}
-          value={data.restaurantName}
-          error={errors["restaurantName"]}
+          label={t(lang, "field.restaurantNameAr")}
+          name="restaurantNameAr"
+          placeholder={t(lang, "field.restaurantNameAr.placeholder")}
+          value={data.restaurantNameAr}
+          error={errors["restaurantNameAr"]}
           required
-          onChange={(value) => onChange({ restaurantName: value })}
-          onBlur={() => onBlurField("restaurantName")}
+          onChange={(value) => onChange({ restaurantNameAr: value })}
+          onBlur={() => onBlurField("restaurantNameAr")}
+        />
+
+        <TextInput
+          label={t(lang, "field.restaurantNameEn")}
+          name="restaurantNameEn"
+          placeholder={t(lang, "field.restaurantNameEn.placeholder")}
+          value={data.restaurantNameEn}
+          error={errors["restaurantNameEn"]}
+          required
+          dir="ltr"
+          onChange={(value) => onChange({ restaurantNameEn: value })}
+          onBlur={() => onBlurField("restaurantNameEn")}
         />
 
         {/* Field A: the logo of the restaurant. */}
@@ -126,6 +152,10 @@ export default function Step1MainInfo({
           error={logoError}
           removeLabel={t(lang, "btn.remove")}
           onSelect={handleLogoFile}
+          uploadStatus={logoUpload.status}
+          statusText={uploadStatusText(lang, logoUpload)}
+          retryLabel={t(lang, "upload.retry")}
+          onRetry={onRetryLogo}
         />
 
         {/* Field B: the menu of the restaurant. It is NOT the same field as the logo. */}
@@ -140,6 +170,10 @@ export default function Step1MainInfo({
           error={menuError}
           removeLabel={t(lang, "btn.remove")}
           onSelect={handleMenuFile}
+          uploadStatus={menuUpload.status}
+          statusText={uploadStatusText(lang, menuUpload)}
+          retryLabel={t(lang, "upload.retry")}
+          onRetry={onRetryMenu}
         />
 
         <TextInput
@@ -183,4 +217,16 @@ export default function Step1MainInfo({
       </div>
     </div>
   );
+}
+
+/** The text of one upload state: the error key wins, then the state itself. */
+function uploadStatusText(lang: Lang, state: UploadState): string {
+  if (state.errorKey !== null) {
+    return t(lang, state.errorKey);
+  }
+
+  if (state.status === "uploading") return t(lang, "upload.uploading");
+  if (state.status === "done") return t(lang, "upload.done");
+
+  return "";
 }

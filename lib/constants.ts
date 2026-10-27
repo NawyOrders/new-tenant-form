@@ -13,6 +13,9 @@ export const TOTAL_STEPS = STEP_ORDER.length;
 /** The maximum number of branches a restaurant can have. */
 export const MAX_BRANCHES = 2;
 
+/** The country code sent with every branch. The restaurants are in Egypt for now. */
+export const DEFAULT_COUNTRY_CODE = "EG";
+
 /** The maximum size of the logo file, in MB. */
 export const MAX_LOGO_SIZE_MB = 5;
 

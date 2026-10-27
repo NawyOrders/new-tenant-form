@@ -5,7 +5,7 @@
 
 import { Suspense, useEffect, useRef, useState } from "react";
 import type { ReactElement } from "react";
-import { useSearchParams } from "next/navigation";
+import { useSearchParams, useRouter } from "next/navigation";
 import PhonePreview from "./preview/PhonePreview";
 import StepIndicator from "./StepIndicator";
 import Step1MainInfo from "./steps/Step1MainInfo";
@@ -19,7 +19,16 @@ import { t } from "@/lib/i18n";
 import type { TranslationKey } from "@/lib/i18n";
 import { ApiError } from "@/lib/api/client";
 import { getOffers } from "@/lib/api/offers";
-import { submitRegistration } from "@/lib/submitRegistration";
+import { mapServerFieldErrors, submitOnboardingRequest } from "@/lib/api/onboarding";
+import {
+  UPLOAD_TYPE_LOGO,
+  UPLOAD_TYPE_MENU,
+  UploadTooLargeError,
+  confirmAsset,
+  createUploadUrls,
+  uploadFile,
+} from "@/lib/api/uploads";
+import type { UploadUrlItem } from "@/lib/api/types";
 import { validateStep, getFieldError } from "@/lib/validation";
 import { getDevFixtures } from "@/lib/devFixtures";
 import type {
@@ -29,21 +38,32 @@ import type {
   RegisterData,
   StepErrors,
   SubmitResult,
+  UploadErrorKey,
+  UploadState,
 } from "@/lib/types";
 
 /** The form when the page opens. */
 const INITIAL_DATA: RegisterData = {
-  restaurantName: "",
+  restaurantNameAr: "",
+  restaurantNameEn: "",
   logoFile: null,
   menuFile: null,
+  logoAssetId: null,
+  logoUploadToken: null,
+  menuAssetId: null,
+  menuUploadToken: null,
   owner: { fullName: "", phone: "", email: "" },
   brand: { primaryColor: "", backgroundColor: "", accentColor: "" },
   branches: [],
   subscriptionOfferId: null,
 };
 
+/** The upload state before any file is chosen. */
+const EMPTY_UPLOAD_STATE: UploadState = { status: "idle", errorKey: null };
+
 function RegisterWizardInner(): ReactElement {
   const searchParams = useSearchParams();
+  const router = useRouter();
   const initialState = useRef<{ data: RegisterData; step: number } | null>(null);
 
   if (initialState.current === null) {
@@ -78,6 +98,15 @@ function RegisterWizardInner(): ReactElement {
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [result, setResult] = useState<SubmitResult | null>(null);
   const [submitError, setSubmitError] = useState<string>("");
+
+  // The state of the two uploads. The files stay in the form when an upload fails.
+  const [logoUpload, setLogoUpload] = useState<UploadState>(EMPTY_UPLOAD_STATE);
+  const [menuUpload, setMenuUpload] = useState<UploadState>(EMPTY_UPLOAD_STATE);
+  const logoUploadSeq = useRef<number>(0);
+  const menuUploadSeq = useRef<number>(0);
+  // One key per submit attempt: a retry after a network error reuses it.
+  const idempotencyKeyRef = useRef<string | null>(null);
+  const submittingRef = useRef<boolean>(false);
 
   // The offers are loaded when step 4 opens. A failure only affects that step.
   const [offers, setOffers] = useState<ActiveSubscriptionOffer[]>([]);
@@ -212,6 +241,99 @@ function RegisterWizardInner(): ReactElement {
     }
   }
 
+  /** Uploads one file: asks for a URL, puts the file, then confirms the asset. */
+  async function startUpload(kind: "logo" | "menu", file: File): Promise<void> {
+    const seqRef: { current: number } = kind === "logo" ? logoUploadSeq : menuUploadSeq;
+    const setUploadState = kind === "logo" ? setLogoUpload : setMenuUpload;
+    const assetPatch = (assetId: string | null, uploadToken: string | null): Partial<RegisterData> =>
+      kind === "logo" ? { logoAssetId: assetId, logoUploadToken: uploadToken } : { menuAssetId: assetId, menuUploadToken: uploadToken };
+
+    seqRef.current += 1;
+    const seq: number = seqRef.current;
+    setUploadState({ status: "uploading", errorKey: null });
+
+    try {
+      const items: UploadUrlItem[] = await createUploadUrls([
+        {
+          type: kind === "logo" ? UPLOAD_TYPE_LOGO : UPLOAD_TYPE_MENU,
+          fileName: file.name,
+          contentType: file.type,
+          sizeBytes: file.size,
+        },
+      ]);
+      const item: UploadUrlItem | undefined = items[0];
+
+      if (item === undefined) {
+        throw new ApiError("server", "The backend returned no upload URL");
+      }
+
+      if (file.size > item.maximumSizeBytes) {
+        throw new UploadTooLargeError();
+      }
+
+      await uploadFile(item.uploadUrl, file, item.contentType);
+      await confirmAsset(item.assetId, item.uploadToken);
+
+      // The file was removed or replaced while the upload was running.
+      if (seq !== seqRef.current) {
+        return;
+      }
+
+      handleChange(assetPatch(item.assetId, item.uploadToken));
+      setUploadState({ status: "done", errorKey: null });
+    } catch (error) {
+      if (seq !== seqRef.current) {
+        return;
+      }
+
+      const errorKey: UploadErrorKey =
+        error instanceof UploadTooLargeError
+          ? "upload.tooLarge"
+          : error instanceof ApiError && error.kind === "missing_config"
+            ? "error.apiMissingConfig"
+            : "upload.failed";
+
+      handleChange(assetPatch(null, null));
+      setUploadState({ status: "failed", errorKey });
+    }
+  }
+
+  /** Keeps the logo, clears its old asset, and starts a new upload. */
+  function handleSelectLogo(file: File | null): void {
+    logoUploadSeq.current += 1;
+    handleChange({ logoFile: file, logoAssetId: null, logoUploadToken: null });
+    setLogoUpload(EMPTY_UPLOAD_STATE);
+
+    if (file !== null) {
+      void startUpload("logo", file);
+    }
+  }
+
+  /** Keeps the menu, clears its old asset, and starts a new upload. */
+  function handleSelectMenu(file: File | null): void {
+    menuUploadSeq.current += 1;
+    handleChange({ menuFile: file, menuAssetId: null, menuUploadToken: null });
+    setMenuUpload(EMPTY_UPLOAD_STATE);
+
+    if (file !== null) {
+      void startUpload("menu", file);
+    }
+  }
+
+  /** Uploads the same logo again after a failure. The file is never lost. */
+  function handleRetryLogo(): void {
+    if (data.logoFile !== null) {
+      void startUpload("logo", data.logoFile);
+    }
+  }
+
+  /** Uploads the same menu again after a failure. The file is never lost. */
+  function handleRetryMenu(): void {
+    if (data.menuFile !== null) {
+      void startUpload("menu", data.menuFile);
+    }
+  }
+
   /** Checks the step and moves to the next one when everything is fine. */
   function handleNext(): void {
     const stepErrors: StepErrors = validateStep(currentStep, data, lang);
@@ -223,30 +345,85 @@ function RegisterWizardInner(): ReactElement {
     }
   }
 
+  /** The step that owns one field, used when the backend rejects a field. */
+  function stepOfField(field: string): number {
+    if (field.startsWith("branches")) return STEP_ORDER.indexOf("branches") + 1;
+    if (field.startsWith("brand.")) return STEP_ORDER.indexOf("identity") + 1;
+    if (field === "subscriptionOfferId") return STEP_ORDER.indexOf("package") + 1;
+    return 1;
+  }
+
   /** Sends the registration. The values stay in the form when it fails. */
   async function handleSubmit(): Promise<void> {
-    const stepErrors: StepErrors = validateStep(currentStep, data, lang);
-    setErrors(stepErrors);
-
-    if (Object.keys(stepErrors).length > 0) {
+    if (submittingRef.current) {
       return;
     }
 
+    // Every step must be valid before anything is sent.
+    for (let step = 1; step <= TOTAL_STEPS; step += 1) {
+      const stepErrors: StepErrors = validateStep(step, data, lang);
+
+      if (Object.keys(stepErrors).length > 0) {
+        setErrors(stepErrors);
+        setCurrentStep(step);
+        scrollToTop();
+        return;
+      }
+    }
+
+    // The request carries the asset ids, so the two files must be confirmed first.
+    if (
+      data.logoAssetId === null ||
+      data.logoUploadToken === null ||
+      data.menuAssetId === null ||
+      data.menuUploadToken === null
+    ) {
+      const isUploading: boolean = logoUpload.status === "uploading" || menuUpload.status === "uploading";
+      setSubmitError(t(lang, isUploading ? "upload.uploading" : "upload.failed"));
+      setErrors({});
+      setCurrentStep(1);
+      scrollToTop();
+      return;
+    }
+
+    if (idempotencyKeyRef.current === null) {
+      idempotencyKeyRef.current = crypto.randomUUID();
+    }
+
+    submittingRef.current = true;
     setIsSubmitting(true);
     setSubmitError("");
 
     try {
-      setResult(await submitRegistration(data));
-    } catch {
-      setSubmitError(t(lang, "error.submit"));
+      const submitResult: SubmitResult = await submitOnboardingRequest(data, idempotencyKeyRef.current);
+      idempotencyKeyRef.current = null;
+      setResult(submitResult);
+      clearForm();
+    } catch (error) {
+      if (error instanceof ApiError && error.status === 409) {
+        setSubmitError(t(lang, "submit.duplicate"));
+      } else if (error instanceof ApiError && error.status === 422) {
+        const fieldErrors: StepErrors = mapServerFieldErrors(error.errors);
+        const firstField: string | undefined = Object.keys(fieldErrors)[0];
+
+        if (firstField !== undefined) {
+          setErrors(fieldErrors);
+          setCurrentStep(stepOfField(firstField));
+        } else {
+          setSubmitError(t(lang, "error.submit"));
+        }
+      } else {
+        setSubmitError(t(lang, "error.submit"));
+      }
     } finally {
+      submittingRef.current = false;
       setIsSubmitting(false);
       scrollToTop();
     }
   }
 
-  /** Starts again with an empty form. */
-  function handleRestart(): void {
+  /** Empties the form. The request id stays on the success screen. */
+  function clearForm(): void {
     if (logoUrlRef.current !== null) {
       URL.revokeObjectURL(logoUrlRef.current);
     }
@@ -257,13 +434,21 @@ function RegisterWizardInner(): ReactElement {
 
     logoUrlRef.current = null;
     menuUrlRef.current = null;
+    logoUploadSeq.current += 1;
+    menuUploadSeq.current += 1;
     setLogoUrl(null);
     setMenuUrl(null);
+    setLogoUpload(EMPTY_UPLOAD_STATE);
+    setMenuUpload(EMPTY_UPLOAD_STATE);
     setData(INITIAL_DATA);
     setErrors({});
-    setResult(null);
     setSubmitError("");
     setCurrentStep(1);
+  }
+
+  /** Goes back to the home page from the success screen. */
+  function handleGoHome(): void {
+    router.push("/");
   }
 
   const hasErrors: boolean = Object.keys(errors).length > 0;
@@ -291,24 +476,24 @@ function RegisterWizardInner(): ReactElement {
                   </svg>
                 </span>
 
-                <h2 className="mt-5 text-xl font-semibold text-ink">{t(lang, "success.title")}</h2>
-                <p className="mx-auto mt-2 max-w-md text-sm leading-relaxed text-muted">
-                  {t(lang, "success.body", { name: data.restaurantName })}
-                </p>
+                <h2 className="mt-5 text-xl font-semibold text-ink">{t(lang, "submit.success.title")}</h2>
 
-                <div className="mx-auto mt-5 max-w-xs rounded-panel border border-line bg-soft/50 px-4 py-3">
-                  <p className="text-xs text-muted">{t(lang, "success.reference")}</p>
-                  <p className="mt-1 font-semibold tabular-nums text-primary-dark" dir="ltr">
-                    {result.referenceId}
-                  </p>
+                <div className="mx-auto mt-5 max-w-sm rounded-panel border border-line bg-soft/50 px-4 py-3">
+                  <label htmlFor="request-id" className="text-xs text-muted">
+                    {t(lang, "submit.success.requestId")}
+                  </label>
+                  <input
+                    id="request-id"
+                    readOnly
+                    dir="ltr"
+                    value={result.requestId}
+                    onFocus={(event) => event.target.select()}
+                    className="mt-1 w-full select-all rounded-panel border border-line bg-card px-3 py-2 text-center font-semibold tabular-nums text-primary-dark outline-none"
+                  />
                 </div>
 
-                <p className="mx-auto mt-5 max-w-md rounded-panel bg-info-soft px-4 py-3 text-xs leading-relaxed text-info-strong">
-                  {t(lang, "success.mock")}
-                </p>
-
-                <Button variant="secondary" className="mt-6" onClick={handleRestart}>
-                  {t(lang, "success.restart")}
+                <Button className="mt-6" onClick={handleGoHome}>
+                  {t(lang, "submit.success.home")}
                 </Button>
               </div>
             ) : (
@@ -341,8 +526,14 @@ function RegisterWizardInner(): ReactElement {
                         lang={lang}
                         logoUrl={logoUrl}
                         menuUrl={menuUrl}
+                        logoUpload={logoUpload}
+                        menuUpload={menuUpload}
                         onChange={handleChange}
                         onBlurField={handleFieldBlur}
+                        onSelectLogo={handleSelectLogo}
+                        onSelectMenu={handleSelectMenu}
+                        onRetryLogo={handleRetryLogo}
+                        onRetryMenu={handleRetryMenu}
                       />
                     );
                   }
@@ -397,9 +588,8 @@ function RegisterWizardInner(): ReactElement {
                       return <Button onClick={handleNext}>{t(lang, "btn.next")}</Button>;
                     }
                     return (
-                      // TODO: enable after the backend confirms submit is live.
-                      <Button disabled isLoading={isSubmitting} onClick={() => void handleSubmit()}>
-                        {t(lang, "btn.finish")}
+                      <Button isLoading={isSubmitting} onClick={() => void handleSubmit()}>
+                        {isSubmitting ? t(lang, "submit.loading") : t(lang, "btn.finish")}
                       </Button>
                     );
                   })()}
