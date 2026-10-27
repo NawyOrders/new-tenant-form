@@ -70,12 +70,17 @@ function readAddressParts(address: NominatimAddress | undefined): GeoAddressPart
  * Turns an address text into coordinates.
  * Returns null when nothing was found or when the service is not reachable.
  */
-export async function searchAddress(query: string, lang: Lang): Promise<GeoResult | null> {
+export async function searchAddress(
+  query: string,
+  lang: Lang,
+  signal?: AbortSignal,
+): Promise<GeoResult | null> {
   const url = `${NOMINATIM_BASE_URL}/search?format=jsonv2&addressdetails=1&q=${encodeURIComponent(query)}&countrycodes=eg&accept-language=${lang}&limit=1`;
 
   try {
     const response: Response = await fetch(url, {
       headers: { Accept: "application/json" },
+      signal,
     });
 
     if (!response.ok) {

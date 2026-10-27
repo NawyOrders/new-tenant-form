@@ -146,6 +146,7 @@ export const translations = {
   "branch.city": { ar: "المدينة", en: "City" },
   "branch.city.placeholder": { ar: "مثال: مدينة نصر", en: "e.g. Nasr City" },
   "branch.search": { ar: "ابحث عن العنوان", en: "Search address" },
+  "branch.searching": { ar: "جاري البحث...", en: "Searching..." },
   "branch.hours": { ar: "مواعيد العمل", en: "Opening hours" },
   "branch.hoursFrom": { ar: "من", en: "From" },
   "branch.hoursTo": { ar: "إلى", en: "To" },
