@@ -76,7 +76,7 @@ export default function Step1MainInfo({
     }
 
     if (file.size > MAX_LOGO_SIZE_MB * 1024 * 1024) {
-      setFileError({ ...fileError, logo: t(lang, "error.fileSize") });
+      setFileError({ ...fileError, logo: t(lang, "upload.tooLarge") });
       return;
     }
 
@@ -98,7 +98,7 @@ export default function Step1MainInfo({
     }
 
     if (file.size > MAX_MENU_SIZE_MB * 1024 * 1024) {
-      setFileError({ ...fileError, menu: t(lang, "error.fileSize") });
+      setFileError({ ...fileError, menu: t(lang, "upload.tooLarge") });
       return;
     }
 

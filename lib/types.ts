@@ -60,8 +60,14 @@ export type RegisterData = {
 /** The state of one file upload (the logo or the menu). */
 export type UploadStatus = "idle" | "uploading" | "done" | "failed";
 
-/** The message key shown when an upload fails. */
-export type UploadErrorKey = "upload.tooLarge" | "upload.failed" | "error.apiMissingConfig";
+/** The message key shown when an upload fails. Each step of the upload has its own key. */
+export type UploadErrorKey =
+  | "upload.tooLarge"
+  | "upload.failed"
+  | "error.apiMissingConfig"
+  | "upload.step.uploadUrls"
+  | "upload.step.put"
+  | "upload.step.confirm";
 
 /** The state of one file upload, kept beside the file in the wizard. */
 export type UploadState = {

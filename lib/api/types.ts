@@ -29,6 +29,8 @@ export type UploadUrlItem = {
   assetId: string;
   uploadToken: string;
   uploadUrl: string;
+  /** When the upload URL stops working (ISO date), null when the backend did not send it. */
+  expiresAtUtc: string | null;
   contentType: string;
   maximumSizeBytes: number;
 };

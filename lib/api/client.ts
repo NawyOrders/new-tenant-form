@@ -134,6 +134,7 @@ export async function apiPutFile(uploadUrl: string, file: File, contentType: str
   const timeoutId: ReturnType<typeof setTimeout> = setTimeout(() => controller.abort(), UPLOAD_TIMEOUT_MS);
 
   try {
+    // Only Content-Type goes here: the storage signs it, and any extra header breaks the signature.
     const response: Response = await fetch(uploadUrl, {
       method: "PUT",
       headers: { "Content-Type": contentType },
@@ -141,7 +142,7 @@ export async function apiPutFile(uploadUrl: string, file: File, contentType: str
       signal: controller.signal,
     });
 
-    if (!response.ok) {
+    if (response.status !== 200 && response.status !== 204) {
       throw new ApiError("server", `Upload failed with status ${response.status}`, response.status);
     }
   } catch (error) {

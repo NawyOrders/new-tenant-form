@@ -26,6 +26,7 @@ import {
   UploadTooLargeError,
   confirmAsset,
   createUploadUrls,
+  isUploadUrlExpired,
   uploadFile,
 } from "@/lib/api/uploads";
 import type { UploadUrlItem } from "@/lib/api/types";
@@ -60,6 +61,23 @@ const INITIAL_DATA: RegisterData = {
 
 /** The upload state before any file is chosen. */
 const EMPTY_UPLOAD_STATE: UploadState = { status: "idle", errorKey: null };
+
+/** The three steps of one upload, in order. */
+type UploadStage = "uploadUrls" | "put" | "confirm";
+
+/** What one failed upload keeps, so the retry can resume at the step that failed. */
+type PendingUpload = {
+  file: File;
+  item: UploadUrlItem | null;
+  stage: UploadStage;
+};
+
+/** The message of each failed step of the upload. */
+const STAGE_ERROR_KEYS: Record<UploadStage, UploadErrorKey> = {
+  uploadUrls: "upload.step.uploadUrls",
+  put: "upload.step.put",
+  confirm: "upload.step.confirm",
+};
 
 function RegisterWizardInner(): ReactElement {
   const searchParams = useSearchParams();
@@ -104,6 +122,9 @@ function RegisterWizardInner(): ReactElement {
   const [menuUpload, setMenuUpload] = useState<UploadState>(EMPTY_UPLOAD_STATE);
   const logoUploadSeq = useRef<number>(0);
   const menuUploadSeq = useRef<number>(0);
+  // The failed upload of each file, kept so the retry resumes at the failed step.
+  const logoPendingRef = useRef<PendingUpload | null>(null);
+  const menuPendingRef = useRef<PendingUpload | null>(null);
   // One key per submit attempt: a retry after a network error reuses it.
   const idempotencyKeyRef = useRef<string | null>(null);
   const submittingRef = useRef<boolean>(false);
@@ -241,9 +262,41 @@ function RegisterWizardInner(): ReactElement {
     }
   }
 
-  /** Uploads one file: asks for a URL, puts the file, then confirms the asset. */
-  async function startUpload(kind: "logo" | "menu", file: File): Promise<void> {
+  /** Asks for one upload slot and checks it against the chosen file. */
+  async function requestUploadSlot(kind: "logo" | "menu", file: File): Promise<UploadUrlItem> {
+    const items: UploadUrlItem[] = await createUploadUrls([
+      {
+        type: kind === "logo" ? UPLOAD_TYPE_LOGO : UPLOAD_TYPE_MENU,
+        fileName: file.name,
+        contentType: file.type,
+        sizeBytes: file.size,
+      },
+    ]);
+    const item: UploadUrlItem | undefined = items[0];
+
+    if (item === undefined) {
+      throw new ApiError("server", "upload-urls returned no upload slot");
+    }
+
+    if (file.size > item.maximumSizeBytes) {
+      throw new UploadTooLargeError();
+    }
+
+    // The storage signs this header, so a different browser type must stop the upload here.
+    if (file.type !== "" && file.type !== item.contentType) {
+      throw new ApiError("server", `The file is ${file.type} but the upload URL signs ${item.contentType}`);
+    }
+
+    return item;
+  }
+
+  /**
+   * Uploads one file, or resumes it at the failed step. The upload URL is only requested
+   * again when there is no slot or the slot is past expiresAtUtc.
+   */
+  async function runUpload(kind: "logo" | "menu", file: File, resumeStage: UploadStage | null): Promise<void> {
     const seqRef: { current: number } = kind === "logo" ? logoUploadSeq : menuUploadSeq;
+    const pendingRef: { current: PendingUpload | null } = kind === "logo" ? logoPendingRef : menuPendingRef;
     const setUploadState = kind === "logo" ? setLogoUpload : setMenuUpload;
     const assetPatch = (assetId: string | null, uploadToken: string | null): Partial<RegisterData> =>
       kind === "logo" ? { logoAssetId: assetId, logoUploadToken: uploadToken } : { menuAssetId: assetId, menuUploadToken: uploadToken };
@@ -252,47 +305,57 @@ function RegisterWizardInner(): ReactElement {
     const seq: number = seqRef.current;
     setUploadState({ status: "uploading", errorKey: null });
 
+    const pending: PendingUpload | null = pendingRef.current;
+    const resumeAt: UploadStage = resumeStage ?? "uploadUrls";
+    let stage: UploadStage = resumeAt;
+    let slot: UploadUrlItem | null = pending !== null && pending.file === file ? pending.item : null;
+
+    if (slot !== null && isUploadUrlExpired(slot)) {
+      slot = null;
+    }
+
     try {
-      const items: UploadUrlItem[] = await createUploadUrls([
-        {
-          type: kind === "logo" ? UPLOAD_TYPE_LOGO : UPLOAD_TYPE_MENU,
-          fileName: file.name,
-          contentType: file.type,
-          sizeBytes: file.size,
-        },
-      ]);
-      const item: UploadUrlItem | undefined = items[0];
-
-      if (item === undefined) {
-        throw new ApiError("server", "The backend returned no upload URL");
+      if (slot === null) {
+        stage = "uploadUrls";
+        slot = await requestUploadSlot(kind, file);
+        stage = "put";
+      } else if (stage === "uploadUrls") {
+        stage = "put";
       }
 
-      if (file.size > item.maximumSizeBytes) {
-        throw new UploadTooLargeError();
+      if (stage === "put") {
+        await uploadFile(slot.uploadUrl, file, slot.contentType);
+        stage = "confirm";
       }
 
-      await uploadFile(item.uploadUrl, file, item.contentType);
-      await confirmAsset(item.assetId, item.uploadToken);
+      await confirmAsset(slot.assetId, slot.uploadToken);
 
       // The file was removed or replaced while the upload was running.
       if (seq !== seqRef.current) {
         return;
       }
 
-      handleChange(assetPatch(item.assetId, item.uploadToken));
+      pendingRef.current = null;
+      handleChange(assetPatch(slot.assetId, slot.uploadToken));
       setUploadState({ status: "done", errorKey: null });
     } catch (error) {
       if (seq !== seqRef.current) {
         return;
       }
 
-      const errorKey: UploadErrorKey =
-        error instanceof UploadTooLargeError
-          ? "upload.tooLarge"
-          : error instanceof ApiError && error.kind === "missing_config"
-            ? "error.apiMissingConfig"
-            : "upload.failed";
+      if (error instanceof UploadTooLargeError) {
+        pendingRef.current = null;
+        handleChange(assetPatch(null, null));
+        setUploadState({ status: "failed", errorKey: "upload.tooLarge" });
+        return;
+      }
 
+      const errorKey: UploadErrorKey =
+        error instanceof ApiError && error.kind === "missing_config"
+          ? "error.apiMissingConfig"
+          : STAGE_ERROR_KEYS[stage];
+
+      pendingRef.current = { file, item: slot, stage };
       handleChange(assetPatch(null, null));
       setUploadState({ status: "failed", errorKey });
     }
@@ -301,36 +364,44 @@ function RegisterWizardInner(): ReactElement {
   /** Keeps the logo, clears its old asset, and starts a new upload. */
   function handleSelectLogo(file: File | null): void {
     logoUploadSeq.current += 1;
+    logoPendingRef.current = null;
     handleChange({ logoFile: file, logoAssetId: null, logoUploadToken: null });
     setLogoUpload(EMPTY_UPLOAD_STATE);
 
     if (file !== null) {
-      void startUpload("logo", file);
+      void runUpload("logo", file, null);
     }
   }
 
   /** Keeps the menu, clears its old asset, and starts a new upload. */
   function handleSelectMenu(file: File | null): void {
     menuUploadSeq.current += 1;
+    menuPendingRef.current = null;
     handleChange({ menuFile: file, menuAssetId: null, menuUploadToken: null });
     setMenuUpload(EMPTY_UPLOAD_STATE);
 
     if (file !== null) {
-      void startUpload("menu", file);
+      void runUpload("menu", file, null);
     }
   }
 
-  /** Uploads the same logo again after a failure. The file is never lost. */
+  /** Uploads the same logo again from the step that failed. The file is never lost. */
   function handleRetryLogo(): void {
-    if (data.logoFile !== null) {
-      void startUpload("logo", data.logoFile);
+    const file: File | null = data.logoFile;
+
+    if (file !== null) {
+      const pending: PendingUpload | null = logoPendingRef.current;
+      void runUpload("logo", file, pending !== null && pending.file === file ? pending.stage : null);
     }
   }
 
-  /** Uploads the same menu again after a failure. The file is never lost. */
+  /** Uploads the same menu again from the step that failed. The file is never lost. */
   function handleRetryMenu(): void {
-    if (data.menuFile !== null) {
-      void startUpload("menu", data.menuFile);
+    const file: File | null = data.menuFile;
+
+    if (file !== null) {
+      const pending: PendingUpload | null = menuPendingRef.current;
+      void runUpload("menu", file, pending !== null && pending.file === file ? pending.stage : null);
     }
   }
 
