@@ -21,10 +21,16 @@ export type Branch = {
   id: number; // Date.now() when the branch is created
   name: string;
   address: string; // full address text
+  // The address parts read from Nominatim, or typed by the visitor. Empty means missing.
+  city: string;
+  region: string;
+  postalCode: string;
+  countryCode: string; // DEFAULT_COUNTRY_CODE until Nominatim returns one
   latitude: number | null; // 6 decimal places
   longitude: number | null; // 6 decimal places
   openingTime: string; // "10:00"
   closingTime: string; // "23:00"
+  // TODO: add the branch phone once the backend confirms that submit requires it.
 };
 
 /** The person who owns the restaurant. */
@@ -132,16 +138,28 @@ export type StepInfo = {
   titleKey: string;
 };
 
+/** The address parts of a Nominatim result. A missing part stays null. */
+export type GeoAddressParts = {
+  city: string | null;
+  region: string | null;
+  postalCode: string | null;
+  countryCode: string | null;
+};
+
 /** The result of an OpenStreetMap (Nominatim) search. */
 export type GeoResult = {
   latitude: number;
   longitude: number;
   displayName: string;
+  /** Added with addressdetails=1; undefined when the service returned no address object. */
+  addressParts?: GeoAddressParts;
 };
 
 /** The result of an OpenStreetMap (Nominatim) reverse search. */
 export type GeoAddress = {
   displayName: string;
+  /** Added with addressdetails=1; undefined when the service returned no address object. */
+  addressParts?: GeoAddressParts;
 };
 
 /** Field errors: key = field name (for example "owner.phone"), value = the error message. */

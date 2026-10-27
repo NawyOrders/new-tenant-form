@@ -143,6 +143,8 @@ export const translations = {
     ar: "مثال: 12 شارع التسعين، التجمع الخامس، القاهرة",
     en: "e.g. 12 Ninety Street, Fifth Settlement, Cairo",
   },
+  "branch.city": { ar: "المدينة", en: "City" },
+  "branch.city.placeholder": { ar: "مثال: مدينة نصر", en: "e.g. Nasr City" },
   "branch.search": { ar: "ابحث عن العنوان", en: "Search address" },
   "branch.hours": { ar: "مواعيد العمل", en: "Opening hours" },
   "branch.hoursFrom": { ar: "من", en: "From" },
@@ -178,6 +180,7 @@ export const translations = {
 
   // ----- Errors -----
   "error.required": { ar: "هذا الحقل مطلوب", en: "This field is required" },
+  "error.branch.city.required": { ar: "المدينة مطلوبة", en: "City is required" },
   "error.logoMissing": { ar: "رفع الشعار مطلوب", en: "Logo upload is required" },
   "error.menuMissing": { ar: "رفع المنيو مطلوب", en: "Menu upload is required" },
   "error.maxBranches": { ar: "أقصى عدد للفروع فرعين", en: "You can add at most 2 branches" },
@@ -215,6 +218,7 @@ export const translations = {
   "upload.step.confirm": { ar: "فشل تأكيد الملف", en: "Confirming the file failed" },
   "submit.loading": { ar: "جاري الإرسال...", en: "Submitting..." },
   "submit.duplicate": { ar: "تم إرسال هذا الطلب من قبل", en: "This request was already submitted" },
+  "submit.error.general": { ar: "في بيانات مطلوب تعديلها", en: "Some data needs correction" },
   "submit.success.title": { ar: "تم إرسال طلبك بنجاح", en: "Your request was submitted" },
   "submit.success.requestId": { ar: "رقم الطلب", en: "Request ID" },
   "submit.success.home": { ar: "الرئيسية", en: "Home" },

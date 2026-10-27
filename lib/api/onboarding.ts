@@ -1,12 +1,10 @@
-// This file sends the onboarding request and maps the errors of the backend to the form.
+// This file builds the onboarding request body and sends it to the backend.
 
 import { ApiError, apiPost } from "./client";
-import { DEFAULT_COUNTRY_CODE } from "@/lib/constants";
 import type {
   OnboardingBranchPayload,
   OnboardingSubmitPayload,
   RegisterData,
-  StepErrors,
   SubmitResult,
 } from "@/lib/types";
 
@@ -33,16 +31,19 @@ export function buildOnboardingPayload(data: RegisterData): OnboardingSubmitPayl
       throw new Error("A branch has no location");
     }
 
+    const region: string = branch.region.trim();
+    const postalCode: string = branch.postalCode.trim();
+
     return {
       name: branch.name.trim(),
       // TODO: the branch form has no phone yet, so the owner phone is sent for now.
       phone: data.owner.phone.trim(),
       addressLine1: branch.address.trim(),
       addressLine2: null,
-      city: null,
-      region: null,
-      countryCode: DEFAULT_COUNTRY_CODE,
-      postalCode: null,
+      city: branch.city.trim(),
+      region: region === "" ? null : region,
+      countryCode: branch.countryCode,
+      postalCode: postalCode === "" ? null : postalCode,
       latitude: branch.latitude,
       longitude: branch.longitude,
       isPrimary: index === 0,
@@ -100,87 +101,4 @@ export async function submitOnboardingRequest(data: RegisterData, idempotencyKey
   }
 
   return { requestId };
-}
-
-/** The form field of one backend field name, or null when the name is not known. */
-function mapFieldName(name: string): string | null {
-  if (name === "restaurantNameAr" || name === "restaurantNameEn" || name === "subscriptionOfferId") {
-    return name;
-  }
-
-  if (name === "ownerFullName") return "owner.fullName";
-  if (name === "ownerEmail") return "owner.email";
-  if (name === "ownerPhone") return "owner.phone";
-
-  const normalized: string = name.replace(/\[(\d+)\]/g, ".$1");
-  const branchMatch: RegExpExecArray | null = /^branches?\.(\d+)\.([A-Za-z0-9]+)$/.exec(normalized);
-
-  if (branchMatch !== null) {
-    const index: string = branchMatch[1];
-    const property: string = branchMatch[2];
-
-    if (property === "name") return `branches.${index}.name`;
-    if (property === "addressLine1") return `branches.${index}.address`;
-    if (property === "latitude" || property === "longitude") return `branches.${index}.${property}`;
-  }
-
-  return null;
-}
-
-/** Reads one message out of a backend error value. */
-function firstMessage(value: unknown): string {
-  if (typeof value === "string") {
-    return value;
-  }
-
-  if (Array.isArray(value)) {
-    for (const item of value) {
-      const message: string = firstMessage(item);
-      if (message !== "") return message;
-    }
-  }
-
-  if (value !== null && typeof value === "object" && "message" in value) {
-    const message: unknown = (value as { message: unknown }).message;
-    if (typeof message === "string") return message;
-  }
-
-  return "";
-}
-
-/** Turns the backend errors into form field errors. Unknown fields are left out. */
-export function mapServerFieldErrors(errors: unknown): StepErrors {
-  const mapped: StepErrors = {};
-
-  const add = (name: string, message: string): void => {
-    const field: string | null = mapFieldName(name);
-
-    if (field !== null && message !== "" && mapped[field] === undefined) {
-      mapped[field] = message;
-    }
-  };
-
-  if (Array.isArray(errors)) {
-    for (const item of errors) {
-      if (item === null || typeof item !== "object") continue;
-
-      const record = item as Record<string, unknown>;
-      const name: unknown = record.field ?? record.property ?? record.name;
-      const message: string = firstMessage(record.message ?? record.error);
-
-      if (typeof name === "string") {
-        add(name, message);
-      }
-    }
-
-    return mapped;
-  }
-
-  if (errors !== null && typeof errors === "object") {
-    for (const [name, value] of Object.entries(errors)) {
-      add(name, firstMessage(value));
-    }
-  }
-
-  return mapped;
 }

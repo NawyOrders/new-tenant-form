@@ -191,6 +191,10 @@ export function validateStep3(data: RegisterData, lang: Lang): Record<string, st
       errors[`branches.${index}.address`] = t(lang, "error.required");
     }
 
+    if (branch.city.trim() === "") {
+      errors[`branches.${index}.city`] = t(lang, "error.branch.city.required");
+    }
+
     if (branch.latitude === null || branch.longitude === null) {
       errors[`branches.${index}.latitude`] = t(lang, "error.required");
     }

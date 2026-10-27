@@ -14,7 +14,7 @@ import Button from "@/components/ui/Button";
 import TextInput from "@/components/ui/TextInput";
 import { reverseGeocode, searchAddress } from "@/lib/geocoding";
 import { t } from "@/lib/i18n";
-import type { Branch, Lang, StepErrors } from "@/lib/types";
+import type { Branch, GeoAddressParts, Lang, StepErrors } from "@/lib/types";
 
 // Leaflet only works in the browser, so the real map is loaded with next/dynamic and ssr: false.
 const BranchMap = dynamic(() => import("@/components/branches/BranchMap"), {
@@ -57,6 +57,25 @@ export default function BranchCard({
   }
 
   /**
+   * The address parts that Nominatim actually returned. A missing part is left out of the
+   * patch, so it never clears a value the visitor typed.
+   */
+  function addressPartsPatch(parts: GeoAddressParts | undefined): Partial<Branch> {
+    if (parts === undefined) {
+      return {};
+    }
+
+    const patch: Partial<Branch> = {};
+
+    if (parts.city !== null) patch.city = parts.city;
+    if (parts.region !== null) patch.region = parts.region;
+    if (parts.postalCode !== null) patch.postalCode = parts.postalCode;
+    if (parts.countryCode !== null) patch.countryCode = parts.countryCode;
+
+    return patch;
+  }
+
+  /**
    * FIELDS -> MAP: searches the typed address on OpenStreetMap and moves the map to the point.
    * It is called by the button and by the Enter key only, never on every keystroke.
    */
@@ -84,6 +103,7 @@ export default function BranchCard({
       address: result.displayName,
       latitude: result.latitude,
       longitude: result.longitude,
+      ...addressPartsPatch(result.addressParts),
     });
   }
 
@@ -104,7 +124,7 @@ export default function BranchCard({
       return;
     }
 
-    onChange({ address: place.displayName });
+    onChange({ address: place.displayName, ...addressPartsPatch(place.addressParts) });
   }
 
   function handleAddressKeyDown(event: KeyboardEvent<HTMLInputElement>): void {
@@ -177,6 +197,16 @@ export default function BranchCard({
             <p className="mt-1.5 text-xs text-muted">{message}</p>
           )}
         </div>
+
+        <TextInput
+          label={t(lang, "branch.city")}
+          name={`branch-city-${branch.id}`}
+          placeholder={t(lang, "branch.city.placeholder")}
+          value={branch.city}
+          error={errorFor("city")}
+          required
+          onChange={(value) => onChange({ city: value })}
+        />
 
         <div className="grid gap-3 sm:grid-cols-2">
           <div>

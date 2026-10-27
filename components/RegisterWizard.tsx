@@ -19,8 +19,10 @@ import { t } from "@/lib/i18n";
 import type { TranslationKey } from "@/lib/i18n";
 import { ApiError } from "@/lib/api/client";
 import { getOffers } from "@/lib/api/offers";
-import { mapServerFieldErrors, submitOnboardingRequest } from "@/lib/api/onboarding";
+import { submitOnboardingRequest } from "@/lib/api/onboarding";
 import { getLogoPalette } from "@/lib/api/palette";
+import { mapServerErrors } from "@/lib/api/serverErrors";
+import type { GeneralServerError } from "@/lib/api/serverErrors";
 import {
   UPLOAD_TYPE_LOGO,
   UPLOAD_TYPE_MENU,
@@ -133,6 +135,7 @@ function RegisterWizardInner(): ReactElement {
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [result, setResult] = useState<SubmitResult | null>(null);
   const [submitError, setSubmitError] = useState<string>("");
+  const [submitGeneralErrors, setSubmitGeneralErrors] = useState<GeneralServerError[]>([]);
 
   // The state of the two uploads. The files stay in the form when an upload fails.
   const [logoUpload, setLogoUpload] = useState<UploadState>(EMPTY_UPLOAD_STATE);
@@ -564,6 +567,7 @@ function RegisterWizardInner(): ReactElement {
     submittingRef.current = true;
     setIsSubmitting(true);
     setSubmitError("");
+    setSubmitGeneralErrors([]);
 
     try {
       const submitResult: SubmitResult = await submitOnboardingRequest(data, idempotencyKeyRef.current);
@@ -573,15 +577,21 @@ function RegisterWizardInner(): ReactElement {
     } catch (error) {
       if (error instanceof ApiError && error.status === 409) {
         setSubmitError(t(lang, "submit.duplicate"));
-      } else if (error instanceof ApiError && error.status === 422) {
-        const fieldErrors: StepErrors = mapServerFieldErrors(error.errors);
-        const firstField: string | undefined = Object.keys(fieldErrors)[0];
+      } else if (error instanceof ApiError && (error.status === 400 || error.status === 422)) {
+        // The backend validates stricter than its schema, so its errors are mapped to the form.
+        const mapped = mapServerErrors(error.errors);
+        const fields: string[] = Object.keys(mapped.fields);
 
-        if (firstField !== undefined) {
-          setErrors(fieldErrors);
-          setCurrentStep(stepOfField(firstField));
-        } else {
+        setSubmitGeneralErrors(mapped.general);
+
+        if (fields.length > 0) {
+          setErrors(mapped.fields);
+          setCurrentStep(Math.min(...fields.map(stepOfField)));
+        } else if (mapped.general.length === 0) {
+          setErrors({});
           setSubmitError(t(lang, "error.submit"));
+        } else {
+          setErrors({});
         }
       } else {
         setSubmitError(t(lang, "error.submit"));
@@ -617,6 +627,7 @@ function RegisterWizardInner(): ReactElement {
     setData(INITIAL_DATA);
     setErrors({});
     setSubmitError("");
+    setSubmitGeneralErrors([]);
     setCurrentStep(1);
   }
 
@@ -679,6 +690,23 @@ function RegisterWizardInner(): ReactElement {
                   >
                     {t(lang, "form.errorSummary")}
                   </p>
+                ) : null}
+
+                {submitGeneralErrors.length > 0 ? (
+                  <div
+                    role="alert"
+                    className="mb-5 rounded-panel bg-danger-soft px-4 py-3 text-sm text-danger-strong"
+                  >
+                    <p className="font-semibold">{t(lang, "submit.error.general")}</p>
+                    <ul className="mt-2 space-y-1">
+                      {submitGeneralErrors.map((entry) => (
+                        <li key={entry.field}>
+                          <span dir="ltr" className="font-mono text-xs">{entry.field}</span>
+                          {`: ${entry.message}`}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
                 ) : null}
 
                 {submitError !== "" ? (

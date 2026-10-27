@@ -1,4 +1,5 @@
 // This is dev-only and can be deleted before release.
+import { DEFAULT_COUNTRY_CODE } from "./constants";
 import { theme } from "./theme";
 import type { RegisterData } from "./types";
 
@@ -23,6 +24,10 @@ export function getDevFixtures(): Partial<RegisterData> {
         id: Date.now(),
         name: "فرع المعادي",
         address: "المعادي، القاهرة",
+        city: "",
+        region: "",
+        postalCode: "",
+        countryCode: DEFAULT_COUNTRY_CODE,
         latitude: 30.0444,
         longitude: 31.2357,
         openingTime: "10:00",
