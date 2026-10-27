@@ -1,8 +1,8 @@
 // This file holds the constants of the wizard: the steps, the mock brand colors,
-// the mock plans, the features of the plans, and the map defaults.
+// the features of the packages, and the map defaults.
 
 import { theme } from "./theme";
-import type { Branch, BilingualText, DurationMonths, Plan, RecommendedPalette, StepInfo } from "./types";
+import type { Branch, BilingualText, RecommendedPalette, StepInfo } from "./types";
 
 /** The ordered list of step keys. Reordering this array moves a step. */
 export const STEP_ORDER: string[] = ["main", "identity", "branches", "package"];
@@ -93,35 +93,13 @@ export const RECOMMENDED_PALETTES: RecommendedPalette[] = [
   },
 ];
 
-/** The features shared by both plans. MOCK data for now, they will come from the backend later. */
+/** The features shared by both packages. MOCK data for now, they will come from the backend later. */
 export const FEATURES: Array<{ id: string; label: BilingualText }> = [
   { id: "apps", label: { ar: "تطبيق للاندرويد والايفون", en: "Android and iOS app" } },
   { id: "reports", label: { ar: "تقارير المبيعات اليومية", en: "Daily sales reports" } },
   { id: "menu", label: { ar: "ادارة المنيو والاصناف", en: "Menu and item management" } },
   { id: "support", label: { ar: "دعم عبر البريد الالكتروني", en: "Email support" } },
 ];
-
-/** The allowed subscription durations, in months. */
-export const DURATIONS: DurationMonths[] = [3, 6, 12];
-
-/** The plans of step 4. MOCK data for now, they will come from the backend later. */
-export const PLANS: Plan[] = [
-  {
-    id: "starter",
-    prices: { 3: 15000, 6: 32000, 12: 60000 },
-    tagKeys: [],
-  },
-  {
-    id: "growth",
-    prices: { 3: 17000, 6: 34000, 12: 62000 },
-    tagKeys: ["package.popular", "package.mostOrdered"],
-  },
-];
-
-/** The total price of a plan for the chosen duration. */
-export function getPlanPrice(plan: Plan, duration: DurationMonths): number {
-  return plan.prices[duration];
-}
 
 /** A new empty branch, with the default opening hours. */
 export function createEmptyBranch(): Branch {

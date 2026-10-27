@@ -1,11 +1,8 @@
 // This is dev-only and can be deleted before release.
 import { theme } from "./theme";
-import { PLANS } from "./constants";
 import type { RegisterData } from "./types";
 
 export function getDevFixtures(): Partial<RegisterData> {
-  const planId = PLANS.length > 0 ? PLANS[0].id : null;
-
   return {
     restaurantName: "مطعم تجريبي",
     owner: { fullName: "أحمد محمود", phone: "01012345678", email: "test@restaurant.com" },
@@ -25,8 +22,7 @@ export function getDevFixtures(): Partial<RegisterData> {
         closingTime: "23:00",
       },
     ],
-    planId,
-    durationMonths: 12,
+    subscriptionOfferId: null,
     logoFile: null,
     menuFile: null,
   };

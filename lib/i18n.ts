@@ -134,18 +134,20 @@ export const translations = {
 
   // ----- Fields of step 4 -----
   "package.heading": { ar: "اختر الباقة المناسبة لمطعمك", en: "Choose the right package for your restaurant" },
+  "package.loading": { ar: "جاري تحميل الباقات...", en: "Loading packages..." },
+  "package.loadFailed": { ar: "تعذر تحميل الباقات", en: "Could not load packages" },
+  "package.retry": { ar: "إعادة المحاولة", en: "Try again" },
+  "package.noOffers": { ar: "لا توجد باقات متاحة حالياً", en: "No packages available right now" },
   "package.duration": { ar: "مدة الاشتراك", en: "Subscription duration" },
   "package.months3": { ar: "3 شهور", en: "3 months" },
   "package.months6": { ar: "6 شهور", en: "6 months" },
   "package.months12": { ar: "12 شهر", en: "12 months" },
+  "package.monthsCount": { ar: "{count} شهور", en: "{count} months" },
   "package.plan.starter": { ar: "Starter", en: "Starter" },
   "package.plan.growth": { ar: "Growth", en: "Growth" },
   "package.feature.ai": { ar: "ميزات الذكاء الاصطناعي", en: "AI features" },
-  "package.perEgp": { ar: "ج.م", en: "EGP" },
   "package.noSelection": { ar: "لم يتم اختيار باقة بعد", en: "No package selected yet" },
   "package.selected": { ar: "تم الاختيار", en: "Selected" },
-  "package.popular": { ar: "رائج", en: "Popular" },
-  "package.mostOrdered": { ar: "الاكثر طلبا", en: "Most ordered" },
   "package.features": { ar: "المميزات", en: "Features" },
 
   // ----- Errors -----
@@ -167,8 +169,8 @@ export const translations = {
   "error.color": { ar: "قيمة اللون غير صحيحة، استخدم صيغة #RRGGBB", en: "Invalid color value, use the #RRGGBB format" },
   "error.fileType": { ar: "صيغة الملف غير مدعومة", en: "Unsupported file format" },
   "error.fileSize": { ar: "حجم الملف أكبر من الحد المسموح", en: "The file is bigger than the allowed size" },
-  "error.choosePlan": { ar: "اختر الباقة", en: "Choose a package" },
-  "error.chooseDuration": { ar: "اختر مدة الاشتراك", en: "Choose the subscription duration" },
+  "error.chooseOffer": { ar: "اختر الباقة والمدة", en: "Choose a package and duration" },
+  "error.apiMissingConfig": { ar: "إعداد الخادم ناقص", en: "Server setup is incomplete" },
   "form.errorSummary": {
     ar: "يوجد حقول ناقصة أو غير صحيحة، راجع الحقول المميزة باللون الأحمر.",
     en: "Some fields are missing or invalid, please check the highlighted fields.",

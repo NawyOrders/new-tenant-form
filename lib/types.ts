@@ -3,11 +3,18 @@
 /** The two languages of the app. */
 export type Lang = "ar" | "en";
 
-/** The two plans of the app. */
-export type PlanId = "starter" | "growth";
+/** One subscription offer returned by the backend. */
+export type ActiveSubscriptionOffer = {
+  id: string; // uuid
+  packageCode: string; // for example "start" or "growth"
+  termCode: string | null;
+  durationMonths: number;
+  price: number;
+  currency: string; // for example "EGP"
+};
 
-/** The allowed subscription durations, in months. */
-export type DurationMonths = 3 | 6 | 12;
+/** The loading state of the offers of the package step. */
+export type OffersStatus = "idle" | "loading" | "ready" | "failed";
 
 /** One restaurant branch (the app allows a maximum of 2). */
 export type Branch = {
@@ -42,23 +49,13 @@ export type RegisterData = {
   owner: OwnerInfo;
   brand: BrandColors;
   branches: Branch[]; // max 2
-  planId: PlanId | null;
-  durationMonths: DurationMonths | null;
+  subscriptionOfferId: string | null;
 };
 
-/** A text that exists in both languages (used by the mock plans and features). */
+/** A text that exists in both languages (used by the mock features and palettes). */
 export type BilingualText = {
   ar: string;
   en: string;
-};
-
-/** One subscription plan (mock data for now, from lib/constants.ts). */
-export type Plan = {
-  id: PlanId;
-  /** The total price in Egyptian pounds for each allowed duration. */
-  prices: Record<DurationMonths, number>;
-  /** Translation keys of the badges of the plan (for example "package.popular"). */
-  tagKeys: string[];
 };
 
 /** One recommended color set (mock data for now, from lib/constants.ts). */
@@ -114,5 +111,5 @@ export type SubmitPayload = {
     openingTime: string;
     closingTime: string;
   }>;
-  package: { planId: PlanId; durationMonths: DurationMonths };
+  package: { subscriptionOfferId: string };
 };

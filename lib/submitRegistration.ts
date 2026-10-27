@@ -14,10 +14,9 @@ const MOCK_DELAY_MS = 900;
 
 /** Builds the body that will be sent to the backend when it is ready. */
 export function buildSubmitPayload(data: RegisterData): SubmitPayload {
-  const planId = data.planId;
-  const durationMonths = data.durationMonths;
+  const subscriptionOfferId: string | null = data.subscriptionOfferId;
 
-  if (planId === null || durationMonths === null) {
+  if (subscriptionOfferId === null) {
     throw new Error("The package is not selected");
   }
 
@@ -42,8 +41,7 @@ export function buildSubmitPayload(data: RegisterData): SubmitPayload {
       closingTime: branch.closingTime,
     })),
     package: {
-      planId,
-      durationMonths,
+      subscriptionOfferId,
     },
   };
 }

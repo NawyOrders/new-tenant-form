@@ -6,11 +6,11 @@
 
 import type { ReactElement } from "react";
 import PreviewBranch from "./PreviewBranch";
-import { DEFAULT_BRAND_COLORS, PLANS, getPlanPrice } from "@/lib/constants";
+import { DEFAULT_BRAND_COLORS } from "@/lib/constants";
 import { formatNumber, t } from "@/lib/i18n";
 import { theme } from "@/lib/theme";
 import { isValidEmail, isValidHexColor, isValidName } from "@/lib/validation";
-import type { Lang, RegisterData } from "@/lib/types";
+import type { ActiveSubscriptionOffer, Lang, RegisterData } from "@/lib/types";
 
 type PhonePreviewProps = {
   data: RegisterData;
@@ -19,6 +19,8 @@ type PhonePreviewProps = {
   logoUrl: string | null;
   /** The local address of the menu file, used to open it. */
   menuUrl: string | null;
+  /** The offer chosen in step 4, null when nothing is chosen yet. */
+  selectedOffer: ActiveSubscriptionOffer | null;
 };
 
 export default function PhonePreview({
@@ -26,6 +28,7 @@ export default function PhonePreview({
   lang,
   logoUrl,
   menuUrl,
+  selectedOffer,
 }: PhonePreviewProps): ReactElement {
   // The colors of the customer page. When the restaurant did not choose one, the theme color is used.
   const primaryColor: string = isValidHexColor(data.brand.primaryColor)
@@ -50,9 +53,6 @@ export default function PhonePreview({
       : isValidName(data.restaurantName)
         ? data.restaurantName
         : t(lang, "field.restaurantName.placeholder");
-
-  const chosenPlan = PLANS.find((plan) => plan.id === data.planId) ?? null;
-  const chosenDuration = data.durationMonths;
 
   const ownerName: string =
     data.owner.fullName.trim() === ""
@@ -200,23 +200,15 @@ export default function PhonePreview({
                 {t(lang, "preview.plan")}
               </p>
 
-              {chosenPlan === null || chosenDuration === null ? (
+              {selectedOffer === null ? (
                 <p className="mt-1 text-[11px]" style={{ color: mutedColor }}>
                   {t(lang, "package.noSelection")}
                 </p>
               ) : (
                 <p className="mt-1 text-[11px] font-semibold">
-                  {chosenPlan.id === "starter"
-                    ? t(lang, "package.plan.starter")
-                    : t(lang, "package.plan.growth")}{" "}
-                  —{" "}
-                  {chosenDuration === 3
-                    ? t(lang, "package.months3")
-                    : chosenDuration === 6
-                      ? t(lang, "package.months6")
-                      : t(lang, "package.months12")}{" "}
-                  — {formatNumber(lang, getPlanPrice(chosenPlan, chosenDuration))}{" "}
-                  {t(lang, "package.perEgp")}
+                  {packageName(lang, selectedOffer.packageCode)} —{" "}
+                  {durationLabel(lang, selectedOffer.durationMonths)} —{" "}
+                  {formatNumber(lang, selectedOffer.price)} {selectedOffer.currency}
                 </p>
               )}
             </section>
@@ -225,6 +217,27 @@ export default function PhonePreview({
       </div>
     </div>
   );
+}
+
+/** The name of a package: known codes are translated, unknown codes stay as they are. */
+function packageName(lang: Lang, packageCode: string): string {
+  if (packageCode === "start") {
+    return t(lang, "package.plan.starter");
+  }
+
+  if (packageCode === "growth") {
+    return t(lang, "package.plan.growth");
+  }
+
+  return packageCode;
+}
+
+/** The label of one duration in months. */
+function durationLabel(lang: Lang, months: number): string {
+  if (months === 3) return t(lang, "package.months3");
+  if (months === 6) return t(lang, "package.months6");
+  if (months === 12) return t(lang, "package.months12");
+  return t(lang, "package.monthsCount", { count: months });
 }
 
 /** True when the color is light, so the text on top of it must be dark. */

@@ -16,10 +16,20 @@ import TopBar from "./TopBar";
 import Button from "./ui/Button";
 import { STEP_ORDER, TOTAL_STEPS } from "@/lib/constants";
 import { t } from "@/lib/i18n";
+import type { TranslationKey } from "@/lib/i18n";
+import { ApiError } from "@/lib/api/client";
+import { getOffers } from "@/lib/api/offers";
 import { submitRegistration } from "@/lib/submitRegistration";
 import { validateStep, getFieldError } from "@/lib/validation";
 import { getDevFixtures } from "@/lib/devFixtures";
-import type { Lang, RegisterData, StepErrors, SubmitResult } from "@/lib/types";
+import type {
+  ActiveSubscriptionOffer,
+  Lang,
+  OffersStatus,
+  RegisterData,
+  StepErrors,
+  SubmitResult,
+} from "@/lib/types";
 
 /** The form when the page opens. */
 const INITIAL_DATA: RegisterData = {
@@ -29,8 +39,7 @@ const INITIAL_DATA: RegisterData = {
   owner: { fullName: "", phone: "", email: "" },
   brand: { primaryColor: "", backgroundColor: "", accentColor: "" },
   branches: [],
-  planId: null,
-  durationMonths: null,
+  subscriptionOfferId: null,
 };
 
 function RegisterWizardInner(): ReactElement {
@@ -69,6 +78,12 @@ function RegisterWizardInner(): ReactElement {
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [result, setResult] = useState<SubmitResult | null>(null);
   const [submitError, setSubmitError] = useState<string>("");
+
+  // The offers are loaded when step 4 opens. A failure only affects that step.
+  const [offers, setOffers] = useState<ActiveSubscriptionOffer[]>([]);
+  const [offersStatus, setOffersStatus] = useState<OffersStatus>("idle");
+  const [offersErrorKey, setOffersErrorKey] = useState<TranslationKey>("package.loadFailed");
+  const offersLoadingRef = useRef<boolean>(false);
 
   // The logo and the menu are kept in the browser only. The picture of the file is a local
   // address, and the old one is freed as soon as the file changes.
@@ -171,6 +186,32 @@ function RegisterWizardInner(): ReactElement {
     });
   }
 
+  /** Loads the subscription offers. Only step 4 shows the result. */
+  async function handleLoadOffers(): Promise<void> {
+    if (offersLoadingRef.current) {
+      return;
+    }
+
+    offersLoadingRef.current = true;
+    setOffersStatus("loading");
+
+    try {
+      const loaded: ActiveSubscriptionOffer[] = await getOffers();
+      setOffers(loaded);
+      setOffersStatus("ready");
+    } catch (error) {
+      setOffers([]);
+      setOffersErrorKey(
+        error instanceof ApiError && error.kind === "missing_config"
+          ? "error.apiMissingConfig"
+          : "package.loadFailed",
+      );
+      setOffersStatus("failed");
+    } finally {
+      offersLoadingRef.current = false;
+    }
+  }
+
   /** Checks the step and moves to the next one when everything is fine. */
   function handleNext(): void {
     const stepErrors: StepErrors = validateStep(currentStep, data, lang);
@@ -226,6 +267,8 @@ function RegisterWizardInner(): ReactElement {
   }
 
   const hasErrors: boolean = Object.keys(errors).length > 0;
+  const selectedOffer: ActiveSubscriptionOffer | null =
+    offers.find((offer) => offer.id === data.subscriptionOfferId) ?? null;
 
   return (
     <div className="min-h-screen bg-page">
@@ -322,7 +365,18 @@ function RegisterWizardInner(): ReactElement {
                     return <Step3Branches data={data} errors={errors} lang={lang} onChange={handleChange} onBlurField={handleFieldBlur} />;
                   }
                   if (key === "package") {
-                    return <Step4Package data={data} errors={errors} lang={lang} onChange={handleChange} />;
+                    return (
+                      <Step4Package
+                        data={data}
+                        errors={errors}
+                        lang={lang}
+                        onChange={handleChange}
+                        offers={offers}
+                        status={offersStatus}
+                        errorKey={offersErrorKey}
+                        onLoadOffers={() => void handleLoadOffers()}
+                      />
+                    );
                   }
                   return null;
                 })()}
@@ -343,7 +397,8 @@ function RegisterWizardInner(): ReactElement {
                       return <Button onClick={handleNext}>{t(lang, "btn.next")}</Button>;
                     }
                     return (
-                      <Button isLoading={isSubmitting} onClick={() => void handleSubmit()}>
+                      // TODO: enable after the backend confirms submit is live.
+                      <Button disabled isLoading={isSubmitting} onClick={() => void handleSubmit()}>
                         {t(lang, "btn.finish")}
                       </Button>
                     );
@@ -355,7 +410,13 @@ function RegisterWizardInner(): ReactElement {
 
           <aside className="lg:sticky lg:top-36">
             <p className="mb-3 text-center text-xs text-muted">{t(lang, "preview.hint")}</p>
-            <PhonePreview data={data} lang={lang} logoUrl={logoUrl} menuUrl={menuUrl} />
+            <PhonePreview
+              data={data}
+              lang={lang}
+              logoUrl={logoUrl}
+              menuUrl={menuUrl}
+              selectedOffer={selectedOffer}
+            />
           </aside>
         </div>
       </main>

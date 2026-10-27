@@ -153,16 +153,12 @@ export function validateStep3(data: RegisterData, lang: Lang): Record<string, st
   return errors;
 }
 
-/** Step 4: the package. A plan and a duration must be chosen. */
+/** Step 4: the package. One offer must be chosen. */
 export function validateStep4(data: RegisterData, lang: Lang): Record<string, string> {
   const errors: Record<string, string> = {};
 
-  if (data.planId === null) {
-    errors["planId"] = t(lang, "error.choosePlan");
-  }
-
-  if (data.durationMonths === null) {
-    errors["durationMonths"] = t(lang, "error.chooseDuration");
+  if (data.subscriptionOfferId === null) {
+    errors["subscriptionOfferId"] = t(lang, "error.chooseOffer");
   }
 
   return errors;
