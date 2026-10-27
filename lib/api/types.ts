@@ -34,3 +34,35 @@ export type UploadUrlItem = {
   contentType: string;
   maximumSizeBytes: number;
 };
+
+/** The colors the palette endpoint read from the logo. */
+export type LogoPaletteColors = {
+  primary: string | null;
+  secondary: string | null;
+  accent: string | null;
+};
+
+/** The design tokens returned beside the palette. */
+export type LogoPaletteTokens = {
+  accentMain: string | null;
+};
+
+/** The extra information of the palette endpoint. */
+export type LogoPaletteMeta = {
+  warnings: string[];
+};
+
+/** The preview data of the palette endpoint, including the contrast check. */
+export type LogoPalettePreview = {
+  cardBgColor: string | null;
+  primaryContrastRatio: number | null;
+  isWcagCompliant: boolean | null;
+};
+
+/** The data of POST /api/v1/onboarding/logo-palette. */
+export type LogoPaletteData = {
+  palette: LogoPaletteColors;
+  tokens: LogoPaletteTokens;
+  meta: LogoPaletteMeta;
+  preview: LogoPalettePreview;
+};

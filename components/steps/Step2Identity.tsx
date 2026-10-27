@@ -5,12 +5,12 @@
 "use client";
 
 import type { ReactElement } from "react";
+import PaletteSuggestions from "@/components/identity/PaletteSuggestions";
 import Button from "@/components/ui/Button";
-import { RECOMMENDED_PALETTES } from "@/lib/constants";
 import { t } from "@/lib/i18n";
 import { theme } from "@/lib/theme";
 import { isValidHexColor } from "@/lib/validation";
-import type { Lang, RegisterData, StepErrors } from "@/lib/types";
+import type { Lang, PaletteState, RegisterData, StepErrors } from "@/lib/types";
 
 type Step2IdentityProps = {
   data: RegisterData;
@@ -18,7 +18,11 @@ type Step2IdentityProps = {
   lang: Lang;
   /** The local picture of the logo. */
   logoUrl: string | null;
+  /** The color suggestions of the logo, owned by the wizard. */
+  palette: PaletteState;
   onChange: (patch: Partial<RegisterData>) => void;
+  /** Asks for the color suggestions again after a retryable failure. */
+  onRetryPalette: () => void;
   /** Goes back to step 1, the only place where the logo can be uploaded. */
   onEditLogo: () => void;
 };
@@ -28,7 +32,9 @@ export default function Step2Identity({
   errors,
   lang,
   logoUrl,
+  palette,
   onChange,
+  onRetryPalette,
   onEditLogo,
 }: Step2IdentityProps): ReactElement {
   return (
@@ -96,55 +102,13 @@ export default function Step2Identity({
           </div>
         </div>
 
-        <div>
-          <h3 className="text-base font-semibold text-ink">{t(lang, "identity.recommended")}</h3>
-
-          {/* MOCK palettes for now (lib/constants.ts). Later they will come from the backend. */}
-          <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4">
-            {RECOMMENDED_PALETTES.map((palette) => {
-              const isSelected: boolean =
-                data.brand.primaryColor.toLowerCase() === palette.primaryColor.toLowerCase();
-
-              return (
-                <button
-                  key={palette.id}
-                  type="button"
-                  onClick={() =>
-                    onChange({
-                      brand: {
-                        primaryColor: palette.primaryColor,
-                        backgroundColor: palette.backgroundColor,
-                        accentColor: palette.accentColor,
-                      },
-                    })
-                  }
-                  aria-pressed={isSelected}
-                  className={`rounded-panel border p-3 text-start transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${
-                    isSelected ? "border-primary bg-primary/5" : "border-line bg-card hover:border-primary/60"
-                  }`}
-                >
-                  <span className="flex gap-1.5">
-                    <span
-                      className="h-6 w-6 rounded-full border border-line"
-                      style={{ backgroundColor: palette.primaryColor }}
-                    />
-                    <span
-                      className="h-6 w-6 rounded-full border border-line"
-                      style={{ backgroundColor: palette.backgroundColor }}
-                    />
-                    <span
-                      className="h-6 w-6 rounded-full border border-line"
-                      style={{ backgroundColor: palette.accentColor }}
-                    />
-                  </span>
-                  <span className="mt-2 block truncate text-xs font-semibold text-ink">
-                    {palette.name[lang]}
-                  </span>
-                </button>
-              );
-            })}
-          </div>
-        </div>
+        <PaletteSuggestions
+          lang={lang}
+          palette={palette}
+          brand={data.brand}
+          onSelect={(brand) => onChange({ brand })}
+          onRetry={onRetryPalette}
+        />
       </div>
     </div>
   );

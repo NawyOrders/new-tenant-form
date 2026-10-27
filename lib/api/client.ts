@@ -65,15 +65,20 @@ function firstErrorMessage(errors: unknown): string {
 
 type SendOptions = {
   method: "GET" | "POST";
-  body?: string;
+  body?: BodyInit;
   headers?: Record<string, string>;
+  /** Overrides the default JSON timeout, for slow calls such as the logo palette. */
+  timeoutMs?: number;
 };
 
 /** Sends JSON to the backend and returns the unwrapped data of the wrapper. */
 async function apiSend<T>(path: string, options: SendOptions): Promise<T> {
   const url: string = `${getBaseUrl()}${path}`;
   const controller = new AbortController();
-  const timeoutId: ReturnType<typeof setTimeout> = setTimeout(() => controller.abort(), TIMEOUT_MS);
+  const timeoutId: ReturnType<typeof setTimeout> = setTimeout(
+    () => controller.abort(),
+    options.timeoutMs ?? TIMEOUT_MS,
+  );
 
   try {
     const response: Response = await fetch(url, {
@@ -126,6 +131,11 @@ export async function apiPost<T>(path: string, body: unknown, headers: Record<st
     body: JSON.stringify(body),
     headers: { "Content-Type": "application/json", ...headers },
   });
+}
+
+/** POSTs multipart form data. No Content-Type is set here: the browser adds the boundary. */
+export async function apiPostForm<T>(path: string, form: FormData, timeoutMs: number): Promise<T> {
+  return apiSend<T>(path, { method: "POST", body: form, timeoutMs });
 }
 
 /** PUTs a raw file to an absolute upload URL (the storage does not use the response wrapper). */

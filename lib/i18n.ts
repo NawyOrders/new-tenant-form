@@ -101,6 +101,31 @@ export const translations = {
   "identity.hex": { ar: "قيمة اللون", en: "Hex value" },
   "identity.hex.placeholder": { ar: "#E43820", en: "#E43820" },
   "identity.optional": { ar: "اختياري", en: "Optional" },
+  "identity.palette.loading": { ar: "جاري اقتراح ألوان من الشعار...", en: "Suggesting colors from the logo..." },
+  "identity.palette.option1": { ar: "الاقتراح الأول", en: "Suggestion 1" },
+  "identity.palette.option2": { ar: "الاقتراح الثاني", en: "Suggestion 2" },
+  "identity.palette.option3": { ar: "الاقتراح الثالث", en: "Suggestion 3" },
+  "identity.palette.fallback": {
+    ar: "لم نتمكن من اقتراح ألوان من هذا الشعار، اختر من الألوان الجاهزة.",
+    en: "We could not suggest colors from this logo, pick one of the ready colors.",
+  },
+  "identity.palette.lowContrast": {
+    ar: "تباين الألوان منخفض، قد يكون النص صعب القراءة.",
+    en: "The color contrast is low, so the text may be hard to read.",
+  },
+  "identity.palette.invalidFile": {
+    ar: "تعذر قراءة ملف الشعار، جرّب صورة أخرى.",
+    en: "Could not read the logo file, try another image.",
+  },
+  "identity.palette.rateLimited": {
+    ar: "طلبات كثيرة في وقت قصير، انتظر قليلًا ثم أعد المحاولة.",
+    en: "Too many requests, wait a moment then try again.",
+  },
+  "identity.palette.serverError": {
+    ar: "تعذر اقتراح الألوان الآن.",
+    en: "Could not suggest colors right now.",
+  },
+  "identity.palette.retry": { ar: "إعادة المحاولة", en: "Try again" },
 
   // ----- Fields of step 3 -----
   "branches.helper": {
@@ -185,7 +210,7 @@ export const translations = {
   "upload.failed": { ar: "فشل رفع الملف", en: "File upload failed" },
   "upload.retry": { ar: "إعادة الرفع", en: "Retry upload" },
   "upload.tooLarge": { ar: "حجم الملف أكبر من المسموح", en: "File is too large" },
-  "upload.step.uploadUrls": { ar: "فشل تجهيز رابط الرفع", en: "Could not get the upload URL" },
+  "upload.step.urls": { ar: "فشل تجهيز رابط الرفع", en: "Could not get the upload URL" },
   "upload.step.put": { ar: "فشل رفع الملف إلى التخزين", en: "Uploading the file to storage failed" },
   "upload.step.confirm": { ar: "فشل تأكيد الملف", en: "Confirming the file failed" },
   "submit.loading": { ar: "جاري الإرسال...", en: "Submitting..." },

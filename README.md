@@ -9,6 +9,7 @@ A bilingual (Arabic and English) restaurant registration web app. It is a 4-step
 - Branches on OpenStreetMap (Leaflet + Nominatim) with two-way sync between address, coordinates and map
 - Max 2 branches, at least 1 required
 - Logo and menu are uploaded to the backend as soon as they are chosen
+- Logo palette suggestions from the backend, with WCAG contrast shown
 - Real submit with an idempotency key, a success screen with the request id, duplicate and validation handling
 
 ## Packages
@@ -18,6 +19,9 @@ The package step loads the active subscription offers from the backend (`GET /ap
 When a logo or a menu is chosen, step 1 asks for an upload URL (`POST /api/v1/onboarding-requests/upload-urls`, type 1 = logo, type 2 = menu). The slot is read from `data.uploads[0]`. The raw file is put on `uploadUrl` with exactly the returned `Content-Type` (the storage signs that header), then the asset is confirmed (`POST /api/v1/onboarding-requests/assets/{assetId}/confirm` with `X-Onboarding-Upload-Token`). The asset ids are stored only after the confirm succeeds. The form keeps the file when an upload fails, shows the message of the failed step, and retries only that step; the upload URL is requested again only when it is missing or past `expiresAtUtc`. Files above the local size limit are rejected before the upload URL request, and files above `maximumSizeBytes` are rejected before the PUT.
 
 The last step validates every step before sending `POST /api/v1/onboarding-requests` with an `Idempotency-Key` header (generated once per submit attempt and reused on retry). `201` shows the request id, `409` means the request was already sent, `422` maps the backend errors to the form fields when possible, and network or 5xx failures keep all the data for a retry with the same key.
+
+## Logo palette
+After a logo is chosen, the same local file is sent to `POST /api/v1/onboarding/logo-palette` as `multipart/form-data` field `file` (public, no token, browser sets the boundary itself; 30 second timeout). Up to three suggestions are built only from the returned values (`palette.primary`, `palette.secondary`, `tokens.accent.main`, `preview.cardBgColor`); nothing is computed or invented. The cards show `preview.primaryContrastRatio`, a low-contrast warning when `isWcagCompliant` is false, and `meta.warnings`. When the backend returns no usable colors, the built-in palettes are shown instead. A manual color edit keeps the value and clears the selected card.
 
 ## Tech stack
 - Next.js (App Router), TypeScript (strict), Tailwind CSS
@@ -50,6 +54,8 @@ components/
     TextInput.tsx
     Button.tsx
     FileUpload.tsx
+  identity/
+    PaletteSuggestions.tsx
 lib/
   types.ts
   theme.ts        # ALL colors and shadows (only place for colors)
@@ -61,6 +67,7 @@ lib/
     types.ts      # the response wrapper and upload types
     offers.ts     # GET the active subscription offers
     uploads.ts    # upload URLs, presigned PUT, asset confirm
+    palette.ts    # POST the logo and map the palette suggestions
     onboarding.ts # POST the registration and map the backend errors
   geocoding.ts    # Nominatim only (searchAddress / reverseGeocode)
 tailwind.config.ts

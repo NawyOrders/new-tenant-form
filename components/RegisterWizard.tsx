@@ -20,6 +20,7 @@ import type { TranslationKey } from "@/lib/i18n";
 import { ApiError } from "@/lib/api/client";
 import { getOffers } from "@/lib/api/offers";
 import { mapServerFieldErrors, submitOnboardingRequest } from "@/lib/api/onboarding";
+import { getLogoPalette } from "@/lib/api/palette";
 import {
   UPLOAD_TYPE_LOGO,
   UPLOAD_TYPE_MENU,
@@ -36,6 +37,8 @@ import type {
   ActiveSubscriptionOffer,
   Lang,
   OffersStatus,
+  PaletteErrorKey,
+  PaletteState,
   RegisterData,
   StepErrors,
   SubmitResult,
@@ -74,10 +77,24 @@ type PendingUpload = {
 
 /** The message of each failed step of the upload. */
 const STAGE_ERROR_KEYS: Record<UploadStage, UploadErrorKey> = {
-  uploadUrls: "upload.step.uploadUrls",
+  uploadUrls: "upload.step.urls",
   put: "upload.step.put",
   confirm: "upload.step.confirm",
 };
+
+/** The palette state before a logo is chosen. */
+const EMPTY_PALETTE_STATE: PaletteState = {
+  status: "idle",
+  options: [],
+  warnings: [],
+  contrastRatio: null,
+  isWcagCompliant: true,
+  errorKey: null,
+  canRetry: false,
+};
+
+/** How long the visitor waits before the retry of a rate-limited palette request appears. */
+const PALETTE_RETRY_WAIT_MS = 5_000;
 
 function RegisterWizardInner(): ReactElement {
   const searchParams = useSearchParams();
@@ -125,6 +142,10 @@ function RegisterWizardInner(): ReactElement {
   // The failed upload of each file, kept so the retry resumes at the failed step.
   const logoPendingRef = useRef<PendingUpload | null>(null);
   const menuPendingRef = useRef<PendingUpload | null>(null);
+  // The color suggestions of the logo. They are UI state, not part of the form data.
+  const [palette, setPalette] = useState<PaletteState>(EMPTY_PALETTE_STATE);
+  const paletteSeq = useRef<number>(0);
+  const paletteRetryTimer = useRef<number | null>(null);
   // One key per submit attempt: a retry after a network error reuses it.
   const idempotencyKeyRef = useRef<string | null>(null);
   const submittingRef = useRef<boolean>(false);
@@ -148,6 +169,10 @@ function RegisterWizardInner(): ReactElement {
 
       if (menuUrlRef.current !== null) {
         URL.revokeObjectURL(menuUrlRef.current);
+      }
+
+      if (paletteRetryTimer.current !== null) {
+        window.clearTimeout(paletteRetryTimer.current);
       }
     };
   }, []);
@@ -361,15 +386,90 @@ function RegisterWizardInner(): ReactElement {
     }
   }
 
-  /** Keeps the logo, clears its old asset, and starts a new upload. */
+  /** Stops the timer that enables the retry of a rate-limited palette request. */
+  function clearPaletteRetryTimer(): void {
+    if (paletteRetryTimer.current !== null) {
+      window.clearTimeout(paletteRetryTimer.current);
+      paletteRetryTimer.current = null;
+    }
+  }
+
+  /** Asks the backend for the colors of one logo file. It runs beside the upload. */
+  async function loadLogoPalette(file: File): Promise<void> {
+    clearPaletteRetryTimer();
+    paletteSeq.current += 1;
+    const seq: number = paletteSeq.current;
+    setPalette({ ...EMPTY_PALETTE_STATE, status: "loading" });
+
+    try {
+      const result = await getLogoPalette(file);
+
+      if (seq !== paletteSeq.current) {
+        return;
+      }
+
+      setPalette({
+        status: "ready",
+        options: result.options,
+        warnings: result.warnings,
+        contrastRatio: result.contrastRatio,
+        isWcagCompliant: result.isWcagCompliant,
+        errorKey: null,
+        canRetry: false,
+      });
+    } catch (error) {
+      if (seq !== paletteSeq.current) {
+        return;
+      }
+
+      const status: number | null = error instanceof ApiError ? error.status : null;
+      const errorKey: PaletteErrorKey =
+        status === 400 || status === 422
+          ? "identity.palette.invalidFile"
+          : status === 429
+            ? "identity.palette.rateLimited"
+            : "identity.palette.serverError";
+      const canRetry: boolean = status !== 400 && status !== 422 && status !== 429;
+
+      setPalette({ ...EMPTY_PALETTE_STATE, status: "error", errorKey, canRetry });
+
+      if (status === 429) {
+        // A rate limit needs a short wait, then the retry button appears.
+        paletteRetryTimer.current = window.setTimeout(() => {
+          paletteRetryTimer.current = null;
+
+          if (seq === paletteSeq.current) {
+            setPalette((prev) => (prev.status === "error" ? { ...prev, canRetry: true } : prev));
+          }
+        }, PALETTE_RETRY_WAIT_MS);
+      }
+    }
+  }
+
+  /** Keeps the logo, clears its old asset, and starts a new upload and palette request. */
   function handleSelectLogo(file: File | null): void {
     logoUploadSeq.current += 1;
     logoPendingRef.current = null;
     handleChange({ logoFile: file, logoAssetId: null, logoUploadToken: null });
     setLogoUpload(EMPTY_UPLOAD_STATE);
 
-    if (file !== null) {
-      void runUpload("logo", file, null);
+    if (file === null) {
+      clearPaletteRetryTimer();
+      paletteSeq.current += 1;
+      setPalette(EMPTY_PALETTE_STATE);
+      return;
+    }
+
+    void runUpload("logo", file, null);
+    void loadLogoPalette(file);
+  }
+
+  /** Retries the palette request of the current logo file. */
+  function handleRetryPalette(): void {
+    const file: File | null = data.logoFile;
+
+    if (file !== null && palette.status === "error" && palette.canRetry) {
+      void loadLogoPalette(file);
     }
   }
 
@@ -507,10 +607,13 @@ function RegisterWizardInner(): ReactElement {
     menuUrlRef.current = null;
     logoUploadSeq.current += 1;
     menuUploadSeq.current += 1;
+    paletteSeq.current += 1;
+    clearPaletteRetryTimer();
     setLogoUrl(null);
     setMenuUrl(null);
     setLogoUpload(EMPTY_UPLOAD_STATE);
     setMenuUpload(EMPTY_UPLOAD_STATE);
+    setPalette(EMPTY_PALETTE_STATE);
     setData(INITIAL_DATA);
     setErrors({});
     setSubmitError("");
@@ -615,7 +718,9 @@ function RegisterWizardInner(): ReactElement {
                         errors={errors}
                         lang={lang}
                         logoUrl={logoUrl}
+                        palette={palette}
                         onChange={handleChange}
+                        onRetryPalette={handleRetryPalette}
                         onEditLogo={() => {
                           const idx = STEP_ORDER.indexOf("main");
                           goToStep(idx >= 0 ? idx + 1 : 1);

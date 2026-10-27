@@ -65,7 +65,7 @@ export type UploadErrorKey =
   | "upload.tooLarge"
   | "upload.failed"
   | "error.apiMissingConfig"
-  | "upload.step.uploadUrls"
+  | "upload.step.urls"
   | "upload.step.put"
   | "upload.step.confirm";
 
@@ -73,6 +73,42 @@ export type UploadErrorKey =
 export type UploadState = {
   status: UploadStatus;
   errorKey: UploadErrorKey | null;
+};
+
+/** One color suggestion returned for the restaurant logo. */
+export type PaletteSuggestion = {
+  id: "option1" | "option2" | "option3";
+  primaryColor: string;
+  backgroundColor: string;
+  accentColor: string;
+};
+
+/** The mapped result of the logo palette request, ready for the UI. */
+export type LogoPaletteResult = {
+  options: PaletteSuggestion[];
+  warnings: string[];
+  contrastRatio: number | null;
+  isWcagCompliant: boolean;
+};
+
+/** The loading state of the logo palette suggestions. */
+export type PaletteStatus = "idle" | "loading" | "ready" | "error";
+
+/** The message key shown when the logo palette request fails. */
+export type PaletteErrorKey =
+  | "identity.palette.invalidFile"
+  | "identity.palette.rateLimited"
+  | "identity.palette.serverError";
+
+/** The suggestions and their state, kept in the wizard beside the form data. */
+export type PaletteState = {
+  status: PaletteStatus;
+  options: PaletteSuggestion[];
+  warnings: string[];
+  contrastRatio: number | null;
+  isWcagCompliant: boolean;
+  errorKey: PaletteErrorKey | null;
+  canRetry: boolean;
 };
 
 /** A text that exists in both languages (used by the mock features and palettes). */
