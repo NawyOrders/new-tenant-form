@@ -5,7 +5,7 @@ import { theme } from "./theme";
 import type { Branch, BilingualText, RecommendedPalette, StepInfo } from "./types";
 
 /** The ordered list of step keys. Reordering this array moves a step. */
-export const STEP_ORDER: string[] = ["main", "identity", "branches", "package", "menuResult"];
+export const STEP_ORDER: string[] = ["main", "identity", "branches", "package"];
 
 /** The number of steps of the wizard. */
 export const TOTAL_STEPS = STEP_ORDER.length;

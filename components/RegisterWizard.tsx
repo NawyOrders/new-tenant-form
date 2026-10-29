@@ -12,7 +12,6 @@ import Step1MainInfo from "./steps/Step1MainInfo";
 import Step2Identity from "./steps/Step2Identity";
 import Step3Branches from "./steps/Step3Branches";
 import Step4Package from "./steps/Step4Package";
-import StepMenuResult from "./steps/StepMenuResult";
 import TopBar from "./TopBar";
 import Button from "./ui/Button";
 import { STEP_ORDER, TOTAL_STEPS } from "@/lib/constants";
@@ -693,9 +692,6 @@ function RegisterWizardInner(): ReactElement {
                         onLoadOffers={() => void handleLoadOffers()}
                       />
                     );
-                  }
-                  if (key === "menuResult") {
-                    return <StepMenuResult menuFile={data.menuFile} lang={lang} />;
                   }
                   return null;
                 })()}

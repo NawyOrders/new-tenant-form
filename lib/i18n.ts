@@ -35,7 +35,6 @@ export const translations = {
   "step.2": { ar: "هوية المطعم", en: "Restaurant Identity" },
   "step.3": { ar: "الفروع", en: "Branches" },
   "step.4": { ar: "الباقة", en: "Package" },
-  "step.menuResult": { ar: "المنيو", en: "Menu" },
 
   // ----- Buttons -----
   "btn.back": { ar: "رجوع", en: "Back" },
@@ -184,32 +183,6 @@ export const translations = {
   "package.noSelection": { ar: "لم يتم اختيار باقة بعد", en: "No package selected yet" },
   "package.selected": { ar: "تم الاختيار", en: "Selected" },
   "package.features": { ar: "المميزات", en: "Features" },
-
-  // ----- Step 5: menu extraction -----
-  "menuResult.title": { ar: "استخراج المنيو", en: "Menu extraction" },
-  "menuResult.noMenu": { ar: "لم يتم رفع منيو", en: "No menu uploaded" },
-  "menuResult.pdfNotSupported": {
-    ar: "استخراج المنيو يدعم الصور فقط (JPG أو PNG أو WEBP)",
-    en: "Menu extraction supports images only (JPG, PNG, or WEBP)",
-  },
-  "menuResult.tooLarge": {
-    ar: "حجم المنيو أكبر من 15 ميجا",
-    en: "Menu file is larger than 15 MB",
-  },
-  "menuResult.submitting": { ar: "جاري إرسال المنيو...", en: "Sending the menu..." },
-  "menuResult.processing": { ar: "جاري الاستخراج...", en: "Extracting..." },
-  "menuResult.count": { ar: "عرض {shown} من {total} صنف", en: "Showing {shown} of {total} items" },
-  "menuResult.needsReview": { ar: "يحتاج مراجعة", en: "Needs review" },
-  "menuResult.empty": {
-    ar: "لم يتم العثور على أصناف في المنيو",
-    en: "No items found in the menu",
-  },
-  "menuResult.failed": { ar: "فشل استخراج المنيو", en: "Menu extraction failed" },
-  "menuResult.timeout": {
-    ar: "انتهت مهلة الاستخراج، حاول مرة أخرى",
-    en: "Extraction timed out, try again",
-  },
-  "menuResult.retry": { ar: "إعادة الاستخراج", en: "Retry extraction" },
 
   // ----- Errors -----
   "error.required": { ar: "هذا الحقل مطلوب", en: "This field is required" },
