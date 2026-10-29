@@ -115,7 +115,7 @@ export default function Step2Identity({
         return;
       }
 
-      onChange({ logoFile: file, logoAssetId: asset.assetId, logoUploadToken: asset.uploadToken });
+      onChange({ logoFile: file, logoAssetId: asset.assetId });
       setPendingLogo(null);
       setIsUploading(false);
     } catch {

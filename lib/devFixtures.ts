@@ -10,9 +10,7 @@ export function getDevFixtures(): Partial<RegisterData> {
     logoFile: null,
     menuFile: null,
     logoAssetId: null,
-    logoUploadToken: null,
     menuAssetId: null,
-    menuUploadToken: null,
     owner: { fullName: "أحمد محمود", phone: "01012345678", email: "test@restaurant.com" },
     brand: {
       primaryColor: theme.primary,

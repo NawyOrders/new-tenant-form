@@ -54,9 +54,7 @@ export type RegisterData = {
   logoFile: File | null; // kept for the local preview and for a retry after a failed upload
   menuFile: File | null; // kept for the local preview and for a retry after a failed upload
   logoAssetId: string | null;
-  logoUploadToken: string | null;
   menuAssetId: string | null;
-  menuUploadToken: string | null;
   owner: OwnerInfo;
   brand: BrandColors;
   branches: Branch[]; // max 2
@@ -196,8 +194,6 @@ export type OnboardingSubmitPayload = {
   ownerPhone: string;
   subscriptionOfferId: string;
   logoAssetId: string;
-  logoUploadToken: string;
   menuAssetId: string;
-  menuUploadToken: string;
   branches: OnboardingBranchPayload[];
 };

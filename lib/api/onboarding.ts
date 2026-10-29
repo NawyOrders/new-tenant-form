@@ -14,15 +14,13 @@ const ONBOARDING_PATH = "/api/v1/onboarding-requests";
 export function buildOnboardingPayload(data: RegisterData): OnboardingSubmitPayload {
   const subscriptionOfferId: string | null = data.subscriptionOfferId;
   const logoAssetId: string | null = data.logoAssetId;
-  const logoUploadToken: string | null = data.logoUploadToken;
   const menuAssetId: string | null = data.menuAssetId;
-  const menuUploadToken: string | null = data.menuUploadToken;
 
   if (subscriptionOfferId === null) {
     throw new Error("The package is not selected");
   }
 
-  if (logoAssetId === null || logoUploadToken === null || menuAssetId === null || menuUploadToken === null) {
+  if (logoAssetId === null || menuAssetId === null) {
     throw new Error("The uploads are not confirmed yet");
   }
 
@@ -61,9 +59,7 @@ export function buildOnboardingPayload(data: RegisterData): OnboardingSubmitPayl
     ownerPhone: data.owner.phone.trim(),
     subscriptionOfferId,
     logoAssetId,
-    logoUploadToken,
     menuAssetId,
-    menuUploadToken,
     branches,
   };
 }

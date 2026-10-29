@@ -53,9 +53,7 @@ const INITIAL_DATA: RegisterData = {
   logoFile: null,
   menuFile: null,
   logoAssetId: null,
-  logoUploadToken: null,
   menuAssetId: null,
-  menuUploadToken: null,
   owner: { fullName: "", phone: "", email: "" },
   brand: { primaryColor: "", backgroundColor: "", accentColor: "" },
   branches: [],
@@ -310,7 +308,7 @@ function RegisterWizardInner(): ReactElement {
     logoUploadSeq.current += 1;
     const seq: number = logoUploadSeq.current;
     setLogoUpload({ status: "uploading", errorKey: null });
-    handleChange({ logoAssetId: null, logoUploadToken: null });
+    handleChange({ logoAssetId: null });
 
     try {
       const asset = await uploadLogo(file);
@@ -319,7 +317,7 @@ function RegisterWizardInner(): ReactElement {
         return;
       }
 
-      handleChange({ logoAssetId: asset.assetId, logoUploadToken: asset.uploadToken });
+      handleChange({ logoAssetId: asset.assetId });
       setLogoUpload({ status: "done", errorKey: null });
     } catch (error) {
       if (seq !== logoUploadSeq.current) {
@@ -361,7 +359,7 @@ function RegisterWizardInner(): ReactElement {
         stage = "confirm";
       }
 
-      await confirmAsset(slot.assetId, slot.uploadToken);
+      await confirmAsset(slot.assetId);
 
       // The file was removed or replaced while the upload was running.
       if (seq !== menuUploadSeq.current) {
@@ -369,7 +367,7 @@ function RegisterWizardInner(): ReactElement {
       }
 
       menuPendingRef.current = null;
-      handleChange({ menuAssetId: slot.assetId, menuUploadToken: slot.uploadToken });
+      handleChange({ menuAssetId: slot.assetId });
       setMenuUpload({ status: "done", errorKey: null });
     } catch (error) {
       if (seq !== menuUploadSeq.current) {
@@ -378,7 +376,7 @@ function RegisterWizardInner(): ReactElement {
 
       if (error instanceof UploadTooLargeError) {
         menuPendingRef.current = null;
-        handleChange({ menuAssetId: null, menuUploadToken: null });
+        handleChange({ menuAssetId: null });
         setMenuUpload({ status: "failed", errorKey: "upload.tooLarge" });
         return;
       }
@@ -389,7 +387,7 @@ function RegisterWizardInner(): ReactElement {
           : STAGE_ERROR_KEYS[stage];
 
       menuPendingRef.current = { file, item: slot, stage };
-      handleChange({ menuAssetId: null, menuUploadToken: null });
+      handleChange({ menuAssetId: null });
       setMenuUpload({ status: "failed", errorKey });
     }
   }
@@ -397,7 +395,7 @@ function RegisterWizardInner(): ReactElement {
   /** Keeps the logo, clears its old asset, and starts the shared upload. */
   function handleSelectLogo(file: File | null): void {
     logoUploadSeq.current += 1;
-    handleChange({ logoFile: file, logoAssetId: null, logoUploadToken: null });
+    handleChange({ logoFile: file, logoAssetId: null });
     setLogoUpload(EMPTY_UPLOAD_STATE);
 
     if (file !== null) {
@@ -409,7 +407,7 @@ function RegisterWizardInner(): ReactElement {
   function handleSelectMenu(file: File | null): void {
     menuUploadSeq.current += 1;
     menuPendingRef.current = null;
-    handleChange({ menuFile: file, menuAssetId: null, menuUploadToken: null });
+    handleChange({ menuFile: file, menuAssetId: null });
     setMenuUpload(EMPTY_UPLOAD_STATE);
 
     if (file !== null) {
@@ -474,12 +472,7 @@ function RegisterWizardInner(): ReactElement {
     }
 
     // The request carries the asset ids, so the two files must be confirmed first.
-    if (
-      data.logoAssetId === null ||
-      data.logoUploadToken === null ||
-      data.menuAssetId === null ||
-      data.menuUploadToken === null
-    ) {
+    if (data.logoAssetId === null || data.menuAssetId === null) {
       const isUploading: boolean = logoUpload.status === "uploading" || menuUpload.status === "uploading";
       setSubmitError(t(lang, isUploading ? "upload.uploading" : "upload.failed"));
       setErrors({});

@@ -29,7 +29,6 @@ function toUploadUrlItem(value: unknown): UploadUrlItem {
   const missing: string[] = [];
 
   if (typeof item.assetId !== "string" || item.assetId === "") missing.push("assetId");
-  if (typeof item.uploadToken !== "string" || item.uploadToken === "") missing.push("uploadToken");
   if (typeof item.uploadUrl !== "string" || item.uploadUrl === "") missing.push("uploadUrl");
   if (typeof item.contentType !== "string" || item.contentType === "") missing.push("contentType");
   if (typeof item.maximumSizeBytes !== "number" || !Number.isFinite(item.maximumSizeBytes)) {
@@ -42,7 +41,6 @@ function toUploadUrlItem(value: unknown): UploadUrlItem {
 
   return {
     assetId: item.assetId as string,
-    uploadToken: item.uploadToken as string,
     uploadUrl: item.uploadUrl as string,
     expiresAtUtc: typeof item.expiresAtUtc === "string" && item.expiresAtUtc !== "" ? item.expiresAtUtc : null,
     contentType: item.contentType as string,
@@ -83,10 +81,8 @@ export async function uploadFile(uploadUrl: string, file: File, contentType: str
 }
 
 /** Confirms the uploaded asset so the onboarding request accepts it. */
-export async function confirmAsset(assetId: string, uploadToken: string): Promise<void> {
-  await apiPost<unknown>(`${ASSETS_PATH}/${encodeURIComponent(assetId)}/confirm`, {}, {
-    "X-Onboarding-Upload-Token": uploadToken,
-  });
+export async function confirmAsset(assetId: string): Promise<void> {
+  await apiPost<unknown>(`${ASSETS_PATH}/${encodeURIComponent(assetId)}/confirm`, {});
 }
 
 /** Where the logo upload stopped. */
@@ -110,10 +106,10 @@ export class LogoUploadError extends Error {
 
 /**
  * Uploads one logo in the three backend steps: ask for the URL, PUT the raw file with exactly
- * the content type the URL signs, then confirm the asset. The ids are returned only after the
+ * the content type the URL signs, then confirm the asset. The id is returned only after the
  * confirm succeeds, so a caller never stores an asset the backend did not accept.
  */
-export async function uploadLogo(file: File): Promise<{ assetId: string; uploadToken: string }> {
+export async function uploadLogo(file: File): Promise<{ assetId: string }> {
   let stage: LogoUploadStage = "urls";
 
   try {
@@ -139,9 +135,9 @@ export async function uploadLogo(file: File): Promise<{ assetId: string; uploadT
     await uploadFile(item.uploadUrl, file, item.contentType);
 
     stage = "confirm";
-    await confirmAsset(item.assetId, item.uploadToken);
+    await confirmAsset(item.assetId);
 
-    return { assetId: item.assetId, uploadToken: item.uploadToken };
+    return { assetId: item.assetId };
   } catch (error) {
     if (error instanceof UploadTooLargeError) {
       throw new LogoUploadError("urls", "tooLarge");

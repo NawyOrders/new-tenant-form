@@ -27,7 +27,6 @@ export type UploadRequestFile = {
 /** One upload target returned by the upload-urls endpoint. */
 export type UploadUrlItem = {
   assetId: string;
-  uploadToken: string;
   uploadUrl: string;
   /** When the upload URL stops working (ISO date), null when the backend did not send it. */
   expiresAtUtc: string | null;
