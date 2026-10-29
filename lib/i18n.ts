@@ -35,6 +35,7 @@ export const translations = {
   "step.2": { ar: "هوية المطعم", en: "Restaurant Identity" },
   "step.3": { ar: "الفروع", en: "Branches" },
   "step.4": { ar: "الباقة", en: "Package" },
+  "step.menuResult": { ar: "المنيو", en: "Menu" },
 
   // ----- Buttons -----
   "btn.back": { ar: "رجوع", en: "Back" },
@@ -98,17 +99,22 @@ export const translations = {
   "identity.accent": { ar: "اضف لون اخر", en: "Add another color" },
   "identity.recommended": { ar: "الالوان الموصى بها", en: "Recommended colors" },
   "identity.logo": { ar: "شعار المطعم", en: "Restaurant logo" },
+  "identity.logo.uploading": { ar: "جاري رفع الشعار...", en: "Uploading logo..." },
+  "identity.logo.failed": { ar: "فشل رفع الشعار، حاول مرة أخرى", en: "Logo upload failed, try again" },
   "identity.hex": { ar: "قيمة اللون", en: "Hex value" },
   "identity.hex.placeholder": { ar: "#E43820", en: "#E43820" },
   "identity.optional": { ar: "اختياري", en: "Optional" },
-  "identity.palette.loading": { ar: "جاري اقتراح ألوان من الشعار...", en: "Suggesting colors from the logo..." },
+  "identity.palette.loading": { ar: "جاري استخراج الألوان من الشعار...", en: "Extracting colors from the logo..." },
+  "identity.palette.fallback": {
+    ar: "تعذر قراءة الشعار، هذه اقتراحات عامة",
+    en: "Could not read the logo, showing general suggestions",
+  },
+  "identity.palette.brand": { ar: "ألوان العلامة", en: "Brand colors" },
+  "identity.palette.dark": { ar: "وضع داكن", en: "Dark mode" },
+  "identity.palette.contrast": { ar: "تباين عالي", en: "High contrast" },
   "identity.palette.option1": { ar: "الاقتراح الأول", en: "Suggestion 1" },
   "identity.palette.option2": { ar: "الاقتراح الثاني", en: "Suggestion 2" },
   "identity.palette.option3": { ar: "الاقتراح الثالث", en: "Suggestion 3" },
-  "identity.palette.fallback": {
-    ar: "لم نتمكن من اقتراح ألوان من هذا الشعار، اختر من الألوان الجاهزة.",
-    en: "We could not suggest colors from this logo, pick one of the ready colors.",
-  },
   "identity.palette.lowContrast": {
     ar: "تباين الألوان منخفض، قد يكون النص صعب القراءة.",
     en: "The color contrast is low, so the text may be hard to read.",
@@ -178,6 +184,32 @@ export const translations = {
   "package.noSelection": { ar: "لم يتم اختيار باقة بعد", en: "No package selected yet" },
   "package.selected": { ar: "تم الاختيار", en: "Selected" },
   "package.features": { ar: "المميزات", en: "Features" },
+
+  // ----- Step 5: menu extraction -----
+  "menuResult.title": { ar: "استخراج المنيو", en: "Menu extraction" },
+  "menuResult.noMenu": { ar: "لم يتم رفع منيو", en: "No menu uploaded" },
+  "menuResult.pdfNotSupported": {
+    ar: "استخراج المنيو يدعم الصور فقط (JPG أو PNG أو WEBP)",
+    en: "Menu extraction supports images only (JPG, PNG, or WEBP)",
+  },
+  "menuResult.tooLarge": {
+    ar: "حجم المنيو أكبر من 15 ميجا",
+    en: "Menu file is larger than 15 MB",
+  },
+  "menuResult.submitting": { ar: "جاري إرسال المنيو...", en: "Sending the menu..." },
+  "menuResult.processing": { ar: "جاري الاستخراج...", en: "Extracting..." },
+  "menuResult.count": { ar: "عرض {shown} من {total} صنف", en: "Showing {shown} of {total} items" },
+  "menuResult.needsReview": { ar: "يحتاج مراجعة", en: "Needs review" },
+  "menuResult.empty": {
+    ar: "لم يتم العثور على أصناف في المنيو",
+    en: "No items found in the menu",
+  },
+  "menuResult.failed": { ar: "فشل استخراج المنيو", en: "Menu extraction failed" },
+  "menuResult.timeout": {
+    ar: "انتهت مهلة الاستخراج، حاول مرة أخرى",
+    en: "Extraction timed out, try again",
+  },
+  "menuResult.retry": { ar: "إعادة الاستخراج", en: "Retry extraction" },
 
   // ----- Errors -----
   "error.required": { ar: "هذا الحقل مطلوب", en: "This field is required" },

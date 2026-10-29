@@ -12,6 +12,7 @@ import Step1MainInfo from "./steps/Step1MainInfo";
 import Step2Identity from "./steps/Step2Identity";
 import Step3Branches from "./steps/Step3Branches";
 import Step4Package from "./steps/Step4Package";
+import StepMenuResult from "./steps/StepMenuResult";
 import TopBar from "./TopBar";
 import Button from "./ui/Button";
 import { STEP_ORDER, TOTAL_STEPS } from "@/lib/constants";
@@ -20,17 +21,17 @@ import type { TranslationKey } from "@/lib/i18n";
 import { ApiError } from "@/lib/api/client";
 import { getOffers } from "@/lib/api/offers";
 import { submitOnboardingRequest } from "@/lib/api/onboarding";
-import { getLogoPalette } from "@/lib/api/palette";
 import { mapServerErrors } from "@/lib/api/serverErrors";
 import type { GeneralServerError } from "@/lib/api/serverErrors";
 import {
-  UPLOAD_TYPE_LOGO,
+  LogoUploadError,
   UPLOAD_TYPE_MENU,
   UploadTooLargeError,
   confirmAsset,
   createUploadUrls,
   isUploadUrlExpired,
   uploadFile,
+  uploadLogo,
 } from "@/lib/api/uploads";
 import type { UploadUrlItem } from "@/lib/api/types";
 import { validateStep, getFieldError } from "@/lib/validation";
@@ -39,8 +40,6 @@ import type {
   ActiveSubscriptionOffer,
   Lang,
   OffersStatus,
-  PaletteErrorKey,
-  PaletteState,
   RegisterData,
   StepErrors,
   SubmitResult,
@@ -77,26 +76,12 @@ type PendingUpload = {
   stage: UploadStage;
 };
 
-/** The message of each failed step of the upload. */
+/** The message of each failed step of the menu upload. */
 const STAGE_ERROR_KEYS: Record<UploadStage, UploadErrorKey> = {
   uploadUrls: "upload.step.urls",
   put: "upload.step.put",
   confirm: "upload.step.confirm",
 };
-
-/** The palette state before a logo is chosen. */
-const EMPTY_PALETTE_STATE: PaletteState = {
-  status: "idle",
-  options: [],
-  warnings: [],
-  contrastRatio: null,
-  isWcagCompliant: true,
-  errorKey: null,
-  canRetry: false,
-};
-
-/** How long the visitor waits before the retry of a rate-limited palette request appears. */
-const PALETTE_RETRY_WAIT_MS = 5_000;
 
 function RegisterWizardInner(): ReactElement {
   const searchParams = useSearchParams();
@@ -142,13 +127,8 @@ function RegisterWizardInner(): ReactElement {
   const [menuUpload, setMenuUpload] = useState<UploadState>(EMPTY_UPLOAD_STATE);
   const logoUploadSeq = useRef<number>(0);
   const menuUploadSeq = useRef<number>(0);
-  // The failed upload of each file, kept so the retry resumes at the failed step.
-  const logoPendingRef = useRef<PendingUpload | null>(null);
+  // The failed menu upload, kept so the retry resumes at the failed step.
   const menuPendingRef = useRef<PendingUpload | null>(null);
-  // The color suggestions of the logo. They are UI state, not part of the form data.
-  const [palette, setPalette] = useState<PaletteState>(EMPTY_PALETTE_STATE);
-  const paletteSeq = useRef<number>(0);
-  const paletteRetryTimer = useRef<number | null>(null);
   // One key per submit attempt: a retry after a network error reuses it.
   const idempotencyKeyRef = useRef<string | null>(null);
   const submittingRef = useRef<boolean>(false);
@@ -172,10 +152,6 @@ function RegisterWizardInner(): ReactElement {
 
       if (menuUrlRef.current !== null) {
         URL.revokeObjectURL(menuUrlRef.current);
-      }
-
-      if (paletteRetryTimer.current !== null) {
-        window.clearTimeout(paletteRetryTimer.current);
       }
     };
   }, []);
@@ -290,11 +266,11 @@ function RegisterWizardInner(): ReactElement {
     }
   }
 
-  /** Asks for one upload slot and checks it against the chosen file. */
-  async function requestUploadSlot(kind: "logo" | "menu", file: File): Promise<UploadUrlItem> {
+  /** Asks for one menu upload slot and checks it against the chosen file. */
+  async function requestMenuSlot(file: File): Promise<UploadUrlItem> {
     const items: UploadUrlItem[] = await createUploadUrls([
       {
-        type: kind === "logo" ? UPLOAD_TYPE_LOGO : UPLOAD_TYPE_MENU,
+        type: UPLOAD_TYPE_MENU,
         fileName: file.name,
         contentType: file.type,
         sizeBytes: file.size,
@@ -318,24 +294,54 @@ function RegisterWizardInner(): ReactElement {
     return item;
   }
 
+  /** Turns the step of the shared logo upload into the message the form shows. */
+  function logoErrorKey(error: unknown): UploadErrorKey {
+    if (error instanceof LogoUploadError) {
+      if (error.reason === "tooLarge") return "upload.tooLarge";
+      if (error.reason === "missingConfig") return "error.apiMissingConfig";
+      if (error.stage === "urls") return "upload.step.urls";
+      if (error.stage === "put") return "upload.step.put";
+    }
+
+    return "upload.step.confirm";
+  }
+
+  /** Uploads the logo through the shared helper of step 1 and step 2. */
+  async function runLogoUpload(file: File): Promise<void> {
+    logoUploadSeq.current += 1;
+    const seq: number = logoUploadSeq.current;
+    setLogoUpload({ status: "uploading", errorKey: null });
+    handleChange({ logoAssetId: null, logoUploadToken: null });
+
+    try {
+      const asset = await uploadLogo(file);
+
+      if (seq !== logoUploadSeq.current) {
+        return;
+      }
+
+      handleChange({ logoAssetId: asset.assetId, logoUploadToken: asset.uploadToken });
+      setLogoUpload({ status: "done", errorKey: null });
+    } catch (error) {
+      if (seq !== logoUploadSeq.current) {
+        return;
+      }
+
+      setLogoUpload({ status: "failed", errorKey: logoErrorKey(error) });
+    }
+  }
+
   /**
-   * Uploads one file, or resumes it at the failed step. The upload URL is only requested
+   * Uploads the menu, or resumes it at the failed step. The upload URL is only requested
    * again when there is no slot or the slot is past expiresAtUtc.
    */
-  async function runUpload(kind: "logo" | "menu", file: File, resumeStage: UploadStage | null): Promise<void> {
-    const seqRef: { current: number } = kind === "logo" ? logoUploadSeq : menuUploadSeq;
-    const pendingRef: { current: PendingUpload | null } = kind === "logo" ? logoPendingRef : menuPendingRef;
-    const setUploadState = kind === "logo" ? setLogoUpload : setMenuUpload;
-    const assetPatch = (assetId: string | null, uploadToken: string | null): Partial<RegisterData> =>
-      kind === "logo" ? { logoAssetId: assetId, logoUploadToken: uploadToken } : { menuAssetId: assetId, menuUploadToken: uploadToken };
+  async function runMenuUpload(file: File, resumeStage: UploadStage | null): Promise<void> {
+    menuUploadSeq.current += 1;
+    const seq: number = menuUploadSeq.current;
+    setMenuUpload({ status: "uploading", errorKey: null });
 
-    seqRef.current += 1;
-    const seq: number = seqRef.current;
-    setUploadState({ status: "uploading", errorKey: null });
-
-    const pending: PendingUpload | null = pendingRef.current;
-    const resumeAt: UploadStage = resumeStage ?? "uploadUrls";
-    let stage: UploadStage = resumeAt;
+    const pending: PendingUpload | null = menuPendingRef.current;
+    let stage: UploadStage = resumeStage ?? "uploadUrls";
     let slot: UploadUrlItem | null = pending !== null && pending.file === file ? pending.item : null;
 
     if (slot !== null && isUploadUrlExpired(slot)) {
@@ -345,7 +351,7 @@ function RegisterWizardInner(): ReactElement {
     try {
       if (slot === null) {
         stage = "uploadUrls";
-        slot = await requestUploadSlot(kind, file);
+        slot = await requestMenuSlot(file);
         stage = "put";
       } else if (stage === "uploadUrls") {
         stage = "put";
@@ -359,22 +365,22 @@ function RegisterWizardInner(): ReactElement {
       await confirmAsset(slot.assetId, slot.uploadToken);
 
       // The file was removed or replaced while the upload was running.
-      if (seq !== seqRef.current) {
+      if (seq !== menuUploadSeq.current) {
         return;
       }
 
-      pendingRef.current = null;
-      handleChange(assetPatch(slot.assetId, slot.uploadToken));
-      setUploadState({ status: "done", errorKey: null });
+      menuPendingRef.current = null;
+      handleChange({ menuAssetId: slot.assetId, menuUploadToken: slot.uploadToken });
+      setMenuUpload({ status: "done", errorKey: null });
     } catch (error) {
-      if (seq !== seqRef.current) {
+      if (seq !== menuUploadSeq.current) {
         return;
       }
 
       if (error instanceof UploadTooLargeError) {
-        pendingRef.current = null;
-        handleChange(assetPatch(null, null));
-        setUploadState({ status: "failed", errorKey: "upload.tooLarge" });
+        menuPendingRef.current = null;
+        handleChange({ menuAssetId: null, menuUploadToken: null });
+        setMenuUpload({ status: "failed", errorKey: "upload.tooLarge" });
         return;
       }
 
@@ -383,96 +389,20 @@ function RegisterWizardInner(): ReactElement {
           ? "error.apiMissingConfig"
           : STAGE_ERROR_KEYS[stage];
 
-      pendingRef.current = { file, item: slot, stage };
-      handleChange(assetPatch(null, null));
-      setUploadState({ status: "failed", errorKey });
+      menuPendingRef.current = { file, item: slot, stage };
+      handleChange({ menuAssetId: null, menuUploadToken: null });
+      setMenuUpload({ status: "failed", errorKey });
     }
   }
 
-  /** Stops the timer that enables the retry of a rate-limited palette request. */
-  function clearPaletteRetryTimer(): void {
-    if (paletteRetryTimer.current !== null) {
-      window.clearTimeout(paletteRetryTimer.current);
-      paletteRetryTimer.current = null;
-    }
-  }
-
-  /** Asks the backend for the colors of one logo file. It runs beside the upload. */
-  async function loadLogoPalette(file: File): Promise<void> {
-    clearPaletteRetryTimer();
-    paletteSeq.current += 1;
-    const seq: number = paletteSeq.current;
-    setPalette({ ...EMPTY_PALETTE_STATE, status: "loading" });
-
-    try {
-      const result = await getLogoPalette(file);
-
-      if (seq !== paletteSeq.current) {
-        return;
-      }
-
-      setPalette({
-        status: "ready",
-        options: result.options,
-        warnings: result.warnings,
-        contrastRatio: result.contrastRatio,
-        isWcagCompliant: result.isWcagCompliant,
-        errorKey: null,
-        canRetry: false,
-      });
-    } catch (error) {
-      if (seq !== paletteSeq.current) {
-        return;
-      }
-
-      const status: number | null = error instanceof ApiError ? error.status : null;
-      const errorKey: PaletteErrorKey =
-        status === 400 || status === 422
-          ? "identity.palette.invalidFile"
-          : status === 429
-            ? "identity.palette.rateLimited"
-            : "identity.palette.serverError";
-      const canRetry: boolean = status !== 400 && status !== 422 && status !== 429;
-
-      setPalette({ ...EMPTY_PALETTE_STATE, status: "error", errorKey, canRetry });
-
-      if (status === 429) {
-        // A rate limit needs a short wait, then the retry button appears.
-        paletteRetryTimer.current = window.setTimeout(() => {
-          paletteRetryTimer.current = null;
-
-          if (seq === paletteSeq.current) {
-            setPalette((prev) => (prev.status === "error" ? { ...prev, canRetry: true } : prev));
-          }
-        }, PALETTE_RETRY_WAIT_MS);
-      }
-    }
-  }
-
-  /** Keeps the logo, clears its old asset, and starts a new upload and palette request. */
+  /** Keeps the logo, clears its old asset, and starts the shared upload. */
   function handleSelectLogo(file: File | null): void {
     logoUploadSeq.current += 1;
-    logoPendingRef.current = null;
     handleChange({ logoFile: file, logoAssetId: null, logoUploadToken: null });
     setLogoUpload(EMPTY_UPLOAD_STATE);
 
-    if (file === null) {
-      clearPaletteRetryTimer();
-      paletteSeq.current += 1;
-      setPalette(EMPTY_PALETTE_STATE);
-      return;
-    }
-
-    void runUpload("logo", file, null);
-    void loadLogoPalette(file);
-  }
-
-  /** Retries the palette request of the current logo file. */
-  function handleRetryPalette(): void {
-    const file: File | null = data.logoFile;
-
-    if (file !== null && palette.status === "error" && palette.canRetry) {
-      void loadLogoPalette(file);
+    if (file !== null) {
+      void runLogoUpload(file);
     }
   }
 
@@ -484,17 +414,16 @@ function RegisterWizardInner(): ReactElement {
     setMenuUpload(EMPTY_UPLOAD_STATE);
 
     if (file !== null) {
-      void runUpload("menu", file, null);
+      void runMenuUpload(file, null);
     }
   }
 
-  /** Uploads the same logo again from the step that failed. The file is never lost. */
+  /** Uploads the same logo again. The file is never lost. */
   function handleRetryLogo(): void {
     const file: File | null = data.logoFile;
 
     if (file !== null) {
-      const pending: PendingUpload | null = logoPendingRef.current;
-      void runUpload("logo", file, pending !== null && pending.file === file ? pending.stage : null);
+      void runLogoUpload(file);
     }
   }
 
@@ -504,7 +433,7 @@ function RegisterWizardInner(): ReactElement {
 
     if (file !== null) {
       const pending: PendingUpload | null = menuPendingRef.current;
-      void runUpload("menu", file, pending !== null && pending.file === file ? pending.stage : null);
+      void runMenuUpload(file, pending !== null && pending.file === file ? pending.stage : null);
     }
   }
 
@@ -617,13 +546,10 @@ function RegisterWizardInner(): ReactElement {
     menuUrlRef.current = null;
     logoUploadSeq.current += 1;
     menuUploadSeq.current += 1;
-    paletteSeq.current += 1;
-    clearPaletteRetryTimer();
     setLogoUrl(null);
     setMenuUrl(null);
     setLogoUpload(EMPTY_UPLOAD_STATE);
     setMenuUpload(EMPTY_UPLOAD_STATE);
-    setPalette(EMPTY_PALETTE_STATE);
     setData(INITIAL_DATA);
     setErrors({});
     setSubmitError("");
@@ -746,13 +672,8 @@ function RegisterWizardInner(): ReactElement {
                         errors={errors}
                         lang={lang}
                         logoUrl={logoUrl}
-                        palette={palette}
                         onChange={handleChange}
-                        onRetryPalette={handleRetryPalette}
-                        onEditLogo={() => {
-                          const idx = STEP_ORDER.indexOf("main");
-                          goToStep(idx >= 0 ? idx + 1 : 1);
-                        }}
+                        onBlurField={handleFieldBlur}
                       />
                     );
                   }
@@ -772,6 +693,9 @@ function RegisterWizardInner(): ReactElement {
                         onLoadOffers={() => void handleLoadOffers()}
                       />
                     );
+                  }
+                  if (key === "menuResult") {
+                    return <StepMenuResult menuFile={data.menuFile} lang={lang} />;
                   }
                   return null;
                 })()}

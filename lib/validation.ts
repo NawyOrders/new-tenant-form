@@ -143,9 +143,19 @@ export function validateStep1(data: RegisterData, lang: Lang): Record<string, st
   return errors;
 }
 
-/** Step 2: the identity of the restaurant (the colors). */
+/** Step 2: the identity of the restaurant (the names and the colors). */
 export function validateStep2(data: RegisterData, lang: Lang): Record<string, string> {
   const errors: Record<string, string> = {};
+
+  const restaurantNameArError: string = getNameError(data.restaurantNameAr, lang, "ar");
+  if (restaurantNameArError !== "") {
+    errors["restaurantNameAr"] = restaurantNameArError;
+  }
+
+  const restaurantNameEnError: string = getNameError(data.restaurantNameEn, lang, "en");
+  if (restaurantNameEnError !== "") {
+    errors["restaurantNameEn"] = restaurantNameEnError;
+  }
 
   if (data.brand.primaryColor.trim() === "") {
     errors["brand.primaryColor"] = t(lang, "error.required");

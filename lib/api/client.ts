@@ -71,8 +71,17 @@ type SendOptions = {
   timeoutMs?: number;
 };
 
+/** One response: the unwrapped data and the headers, which some polling calls read. */
+export type ApiResult<T> = { data: T; headers: Headers };
+
 /** Sends JSON to the backend and returns the unwrapped data of the wrapper. */
 async function apiSend<T>(path: string, options: SendOptions): Promise<T> {
+  const result: ApiResult<T> = await apiSendFull<T>(path, options);
+  return result.data;
+}
+
+/** Sends one request and keeps the response headers beside the unwrapped data. */
+async function apiSendFull<T>(path: string, options: SendOptions): Promise<ApiResult<T>> {
   const url: string = `${getBaseUrl()}${path}`;
   const controller = new AbortController();
   const timeoutId: ReturnType<typeof setTimeout> = setTimeout(
@@ -103,7 +112,7 @@ async function apiSend<T>(path: string, options: SendOptions): Promise<T> {
       throw new ApiError("server", message !== "" ? message : fallback, status, envelope !== null ? envelope.errors : null);
     }
 
-    return envelope.data;
+    return { data: envelope.data, headers: response.headers };
   } catch (error) {
     if (error instanceof ApiError) {
       throw error;
@@ -122,6 +131,11 @@ async function apiSend<T>(path: string, options: SendOptions): Promise<T> {
 /** GETs one path from the backend and returns the unwrapped data. */
 export async function apiGet<T>(path: string): Promise<T> {
   return apiSend<T>(path, { method: "GET" });
+}
+
+/** GETs one path and keeps the response headers, which the OCR polling reads. */
+export async function apiGetWithHeaders<T>(path: string, timeoutMs: number): Promise<ApiResult<T>> {
+  return apiSendFull<T>(path, { method: "GET", timeoutMs });
 }
 
 /** POSTs a JSON body to the backend and returns the unwrapped data. */

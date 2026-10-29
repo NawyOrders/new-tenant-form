@@ -88,3 +88,69 @@ export async function confirmAsset(assetId: string, uploadToken: string): Promis
     "X-Onboarding-Upload-Token": uploadToken,
   });
 }
+
+/** Where the logo upload stopped. */
+export type LogoUploadStage = "urls" | "put" | "confirm";
+
+/** Why the logo upload stopped. */
+export type LogoUploadReason = "tooLarge" | "missingConfig" | "api";
+
+/** Thrown by uploadLogo, with the step that failed so the form can say what to retry. */
+export class LogoUploadError extends Error {
+  readonly stage: LogoUploadStage;
+  readonly reason: LogoUploadReason;
+
+  constructor(stage: LogoUploadStage, reason: LogoUploadReason) {
+    super(`The logo upload failed at ${stage}`);
+    this.name = "LogoUploadError";
+    this.stage = stage;
+    this.reason = reason;
+  }
+}
+
+/**
+ * Uploads one logo in the three backend steps: ask for the URL, PUT the raw file with exactly
+ * the content type the URL signs, then confirm the asset. The ids are returned only after the
+ * confirm succeeds, so a caller never stores an asset the backend did not accept.
+ */
+export async function uploadLogo(file: File): Promise<{ assetId: string; uploadToken: string }> {
+  let stage: LogoUploadStage = "urls";
+
+  try {
+    const items: UploadUrlItem[] = await createUploadUrls([
+      { type: UPLOAD_TYPE_LOGO, fileName: file.name, contentType: file.type, sizeBytes: file.size },
+    ]);
+    const item: UploadUrlItem | undefined = items[0];
+
+    if (item === undefined) {
+      throw new ApiError("server", "upload-urls returned no upload slot");
+    }
+
+    if (file.size > item.maximumSizeBytes) {
+      throw new UploadTooLargeError();
+    }
+
+    // The storage signs this header, so a different browser type must stop the upload here.
+    if (file.type !== "" && file.type !== item.contentType) {
+      throw new ApiError("server", `The file is ${file.type} but the upload URL signs ${item.contentType}`);
+    }
+
+    stage = "put";
+    await uploadFile(item.uploadUrl, file, item.contentType);
+
+    stage = "confirm";
+    await confirmAsset(item.assetId, item.uploadToken);
+
+    return { assetId: item.assetId, uploadToken: item.uploadToken };
+  } catch (error) {
+    if (error instanceof UploadTooLargeError) {
+      throw new LogoUploadError("urls", "tooLarge");
+    }
+
+    if (error instanceof ApiError && error.kind === "missing_config") {
+      throw new LogoUploadError(stage, "missingConfig");
+    }
+
+    throw new LogoUploadError(stage, "api");
+  }
+}
