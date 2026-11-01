@@ -21,6 +21,8 @@ import type { Branch, RegisterData } from "../../lib/types";
 
 const ARABIC_NAME = "\u0645\u0637\u0639\u0645 \u062a\u062c\u0631\u064a\u0628\u064a";
 
+const EMAIL_ERROR = "Enter a valid email: 3+ characters before @, then a known provider or a .com / .net domain";
+
 function makeBranch(overrides: Partial<Branch> = {}): Branch {
   return {
     id: 1,
@@ -84,11 +86,29 @@ describe("simple value validators", () => {
 
   test("isValidEmail accepts normal addresses and rejects broken ones", () => {
     assert.equal(isValidEmail("owner@example.com"), true);
-    assert.equal(isValidEmail("first.last+tag@sub.example.co"), true);
+    assert.equal(isValidEmail("first.last+tag@sub.example.co"), false);
     assert.equal(isValidEmail(""), false);
     assert.equal(isValidEmail("owner@example"), false);
     assert.equal(isValidEmail("owner example.com"), false);
     assert.equal(isValidEmail("owner@.com"), false);
+  });
+
+  test("isValidEmail follows the local part rule", () => {
+    assert.equal(isValidEmail("ali@gmail.com"), true);
+    assert.equal(isValidEmail("a11@gmail.com"), true);
+    assert.equal(isValidEmail("a@gmail.com"), false);
+    assert.equal(isValidEmail("111@gmail.com"), false);
+    assert.equal(isValidEmail("#%$@7.com"), false);
+  });
+
+  test("isValidEmail follows the domain rule", () => {
+    assert.equal(isValidEmail("ali@abcd.com"), true);
+    assert.equal(isValidEmail("ali@live.com"), true);
+    assert.equal(isValidEmail("ali@ABCD.COM"), true);
+    assert.equal(isValidEmail("ali@abc.com"), false);
+    assert.equal(isValidEmail("01@1.com"), false);
+    assert.equal(isValidEmail("1@1.co"), false);
+    assert.equal(isValidEmail("ali@gmail.co"), false);
   });
 
   test("name validators follow the script rules", () => {
@@ -156,7 +176,7 @@ describe("validateStep1", () => {
 
     assert.equal(errors["restaurantNameAr"], "Name must be 2 to 60 characters");
     assert.equal(errors["owner.phone"], "Invalid mobile number");
-    assert.equal(errors["owner.email"], "Enter a valid email address");
+    assert.equal(errors["owner.email"], EMAIL_ERROR);
   });
 });
 
@@ -275,6 +295,6 @@ describe("getFieldError", () => {
     assert.equal(getFieldError("branches.9.name", data, "en"), "");
     assert.equal(getFieldError("restaurantNameAr", makeData({ restaurantNameAr: "" }), "en"), "This field is required");
     assert.equal(getFieldError("restaurantNameEn", makeData({ restaurantNameEn: "A" }), "en"), "Name must be 2 to 60 characters");
-    assert.equal(getFieldError("owner.email", makeData({ owner: { fullName: "Ahmed Mahmoud", phone: "01012345678", email: "bad" } }), "en"), "Enter a valid email address");
+    assert.equal(getFieldError("owner.email", makeData({ owner: { fullName: "Ahmed Mahmoud", phone: "01012345678", email: "bad" } }), "en"), EMAIL_ERROR);
   });
 });
