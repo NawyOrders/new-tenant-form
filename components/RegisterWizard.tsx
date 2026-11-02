@@ -22,22 +22,15 @@ import { getOffers } from "@/lib/api/offers";
 import { submitOnboardingRequest } from "@/lib/api/onboarding";
 import { mapServerErrors } from "@/lib/api/serverErrors";
 import type { GeneralServerError } from "@/lib/api/serverErrors";
-import {
-  LogoUploadError,
-  UPLOAD_TYPE_MENU,
-  UploadTooLargeError,
-  confirmAsset,
-  createUploadUrls,
-  isUploadUrlExpired,
-  uploadFile,
-  uploadLogo,
-} from "@/lib/api/uploads";
-import type { UploadUrlItem } from "@/lib/api/types";
+import { LogoUploadError, uploadLogo, uploadMenuFiles } from "@/lib/api/uploads";
+import type { MenuUploadOutcome } from "@/lib/api/uploads";
 import { validateStep, getFieldError } from "@/lib/validation";
 import { getDevFixtures } from "@/lib/devFixtures";
 import type {
   ActiveSubscriptionOffer,
   Lang,
+  MenuAsset,
+  MenuFileUploadState,
   OffersStatus,
   RegisterData,
   StepErrors,
@@ -51,8 +44,9 @@ const INITIAL_DATA: RegisterData = {
   restaurantNameAr: "",
   restaurantNameEn: "",
   logoFile: null,
-  menuFile: null,
+  menuFiles: [],
   logoAssetId: null,
+  menuAssets: [],
   menuAssetId: null,
   owner: { fullName: "", phone: "", email: "" },
   brand: { primaryColor: "", backgroundColor: "", accentColor: "" },
@@ -63,22 +57,14 @@ const INITIAL_DATA: RegisterData = {
 /** The upload state before any file is chosen. */
 const EMPTY_UPLOAD_STATE: UploadState = { status: "idle", errorKey: null };
 
-/** The three steps of one upload, in order. */
-type UploadStage = "uploadUrls" | "put" | "confirm";
-
-/** What one failed upload keeps, so the retry can resume at the step that failed. */
-type PendingUpload = {
-  file: File;
-  item: UploadUrlItem | null;
-  stage: UploadStage;
-};
-
-/** The message of each failed step of the menu upload. */
-const STAGE_ERROR_KEYS: Record<UploadStage, UploadErrorKey> = {
-  uploadUrls: "upload.step.urls",
-  put: "upload.step.put",
-  confirm: "upload.step.confirm",
-};
+/** Turns one failed menu file into the message the form shows on its row. */
+function menuFailureKey(outcome: Extract<MenuUploadOutcome, { status: "failed" }>): UploadErrorKey {
+  if (outcome.reason === "tooLarge") return "upload.tooLarge";
+  if (outcome.reason === "missingConfig") return "error.apiMissingConfig";
+  if (outcome.stage === "put") return "upload.step.put";
+  if (outcome.stage === "confirm") return "upload.step.confirm";
+  return "upload.step.urls";
+}
 
 function RegisterWizardInner(): ReactElement {
   const searchParams = useSearchParams();
@@ -121,11 +107,9 @@ function RegisterWizardInner(): ReactElement {
 
   // The state of the two uploads. The files stay in the form when an upload fails.
   const [logoUpload, setLogoUpload] = useState<UploadState>(EMPTY_UPLOAD_STATE);
-  const [menuUpload, setMenuUpload] = useState<UploadState>(EMPTY_UPLOAD_STATE);
+  const [menuUploads, setMenuUploads] = useState<MenuFileUploadState[]>([]);
   const logoUploadSeq = useRef<number>(0);
   const menuUploadSeq = useRef<number>(0);
-  // The failed menu upload, kept so the retry resumes at the failed step.
-  const menuPendingRef = useRef<PendingUpload | null>(null);
   // One key per submit attempt: a retry after a network error reuses it.
   const idempotencyKeyRef = useRef<string | null>(null);
   const submittingRef = useRef<boolean>(false);
@@ -180,8 +164,9 @@ function RegisterWizardInner(): ReactElement {
         setLogoUrl(url);
       }
 
-      if (nextPatch.menuFile !== undefined && nextPatch.menuFile !== prev.menuFile) {
-        const url: string | null = createLocalUrl(nextPatch.menuFile, menuUrlRef.current);
+      if (nextPatch.menuFiles !== undefined && nextPatch.menuFiles !== prev.menuFiles) {
+        const firstFile: File | null = nextPatch.menuFiles[0] ?? null;
+        const url: string | null = createLocalUrl(firstFile, menuUrlRef.current);
         menuUrlRef.current = url;
         setMenuUrl(url);
       }
@@ -263,34 +248,6 @@ function RegisterWizardInner(): ReactElement {
     }
   }
 
-  /** Asks for one menu upload slot and checks it against the chosen file. */
-  async function requestMenuSlot(file: File): Promise<UploadUrlItem> {
-    const items: UploadUrlItem[] = await createUploadUrls([
-      {
-        type: UPLOAD_TYPE_MENU,
-        fileName: file.name,
-        contentType: file.type,
-        sizeBytes: file.size,
-      },
-    ]);
-    const item: UploadUrlItem | undefined = items[0];
-
-    if (item === undefined) {
-      throw new ApiError("server", "upload-urls returned no upload slot");
-    }
-
-    if (file.size > item.maximumSizeBytes) {
-      throw new UploadTooLargeError();
-    }
-
-    // The storage signs this header, so a different browser type must stop the upload here.
-    if (file.type !== "" && file.type !== item.contentType) {
-      throw new ApiError("server", `The file is ${file.type} but the upload URL signs ${item.contentType}`);
-    }
-
-    return item;
-  }
-
   /** Turns the step of the shared logo upload into the message the form shows. */
   function logoErrorKey(error: unknown): UploadErrorKey {
     if (error instanceof LogoUploadError) {
@@ -329,66 +286,85 @@ function RegisterWizardInner(): ReactElement {
   }
 
   /**
-   * Uploads the menu, or resumes it at the failed step. The upload URL is only requested
-   * again when there is no slot or the slot is past expiresAtUtc.
+   * Uploads the given menu files in one batch. Each file keeps its own state, so a failed file
+   * is marked alone and its successful siblings stay done. Only the failed file is retried.
    */
-  async function runMenuUpload(file: File, resumeStage: UploadStage | null): Promise<void> {
+  async function runMenuUpload(files: File[]): Promise<void> {
     menuUploadSeq.current += 1;
     const seq: number = menuUploadSeq.current;
-    setMenuUpload({ status: "uploading", errorKey: null });
+    const uploading: MenuFileUploadState[] = files.map((file: File) => ({
+      fileName: file.name,
+      status: "uploading",
+      errorKey: null,
+    }));
 
-    const pending: PendingUpload | null = menuPendingRef.current;
-    let stage: UploadStage = resumeStage ?? "uploadUrls";
-    let slot: UploadUrlItem | null = pending !== null && pending.file === file ? pending.item : null;
-
-    if (slot !== null && isUploadUrlExpired(slot)) {
-      slot = null;
-    }
+    setMenuUploads((prev) => [
+      ...prev.filter((entry) => !files.some((file: File) => file.name === entry.fileName)),
+      ...uploading,
+    ]);
 
     try {
-      if (slot === null) {
-        stage = "uploadUrls";
-        slot = await requestMenuSlot(file);
-        stage = "put";
-      } else if (stage === "uploadUrls") {
-        stage = "put";
-      }
+      const outcomes: MenuUploadOutcome[] = await uploadMenuFiles(files);
 
-      if (stage === "put") {
-        await uploadFile(slot.uploadUrl, file, slot.contentType);
-        stage = "confirm";
-      }
-
-      await confirmAsset(slot.assetId);
-
-      // The file was removed or replaced while the upload was running.
+      // A file was removed while the batch was running.
       if (seq !== menuUploadSeq.current) {
         return;
       }
 
-      menuPendingRef.current = null;
-      handleChange({ menuAssetId: slot.assetId });
-      setMenuUpload({ status: "done", errorKey: null });
+      const failedNames: Set<string> = new Set<string>();
+      const doneAssets: MenuAsset[] = [];
+      const byName: Map<string, MenuFileUploadState> = new Map<string, MenuFileUploadState>();
+
+      for (const outcome of outcomes) {
+        const file: File = files[outcome.index];
+
+        if (outcome.status === "done") {
+          doneAssets.push(outcome.asset);
+          byName.set(file.name, { fileName: file.name, status: "done", errorKey: null });
+        } else {
+          failedNames.add(file.name);
+          byName.set(file.name, {
+            fileName: file.name,
+            status: "failed",
+            errorKey: menuFailureKey(outcome),
+          });
+        }
+      }
+
+      setMenuUploads((prev) => prev.map((entry) => byName.get(entry.fileName) ?? entry));
+
+      handleChange((prev) => {
+        const assets: Map<string, MenuAsset> = new Map(prev.menuAssets.map((asset) => [asset.fileName, asset]));
+        failedNames.forEach((name) => assets.delete(name));
+        doneAssets.forEach((asset) => assets.set(asset.fileName, asset));
+
+        const ordered: MenuAsset[] = prev.menuFiles.flatMap((file) => {
+          const asset: MenuAsset | undefined = assets.get(file.name);
+          return asset === undefined ? [] : [asset];
+        });
+
+        return { menuAssets: ordered, menuAssetId: ordered[0]?.assetId ?? null };
+      });
     } catch (error) {
       if (seq !== menuUploadSeq.current) {
         return;
       }
 
-      if (error instanceof UploadTooLargeError) {
-        menuPendingRef.current = null;
-        handleChange({ menuAssetId: null });
-        setMenuUpload({ status: "failed", errorKey: "upload.tooLarge" });
-        return;
-      }
-
       const errorKey: UploadErrorKey =
-        error instanceof ApiError && error.kind === "missing_config"
-          ? "error.apiMissingConfig"
-          : STAGE_ERROR_KEYS[stage];
+        error instanceof ApiError && error.kind === "missing_config" ? "error.apiMissingConfig" : "upload.step.urls";
+      const names: Set<string> = new Set(files.map((file) => file.name));
 
-      menuPendingRef.current = { file, item: slot, stage };
-      handleChange({ menuAssetId: null });
-      setMenuUpload({ status: "failed", errorKey });
+      setMenuUploads((prev) =>
+        prev.map(
+          (entry): MenuFileUploadState =>
+            names.has(entry.fileName) ? { ...entry, status: "failed", errorKey } : entry,
+        ),
+      );
+
+      handleChange((prev) => {
+        const assets: MenuAsset[] = prev.menuAssets.filter((asset) => !names.has(asset.fileName));
+        return { menuAssets: assets, menuAssetId: assets[0]?.assetId ?? null };
+      });
     }
   }
 
@@ -403,16 +379,26 @@ function RegisterWizardInner(): ReactElement {
     }
   }
 
-  /** Keeps the menu, clears its old asset, and starts a new upload. */
-  function handleSelectMenu(file: File | null): void {
-    menuUploadSeq.current += 1;
-    menuPendingRef.current = null;
-    handleChange({ menuFile: file, menuAssetId: null });
-    setMenuUpload(EMPTY_UPLOAD_STATE);
-
-    if (file !== null) {
-      void runMenuUpload(file, null);
+  /** Adds the chosen menu files and starts their upload. */
+  function handleAddMenuFiles(files: File[]): void {
+    if (files.length === 0) {
+      return;
     }
+
+    handleChange((prev) => ({ menuFiles: [...prev.menuFiles, ...files] }));
+    void runMenuUpload(files);
+  }
+
+  /** Removes one menu file and its confirmed asset, if it has one. */
+  function handleRemoveMenuFile(fileName: string): void {
+    menuUploadSeq.current += 1;
+    setMenuUploads((prev) => prev.filter((entry) => entry.fileName !== fileName));
+
+    handleChange((prev) => {
+      const files: File[] = prev.menuFiles.filter((file) => file.name !== fileName);
+      const assets: MenuAsset[] = prev.menuAssets.filter((asset) => asset.fileName !== fileName);
+      return { menuFiles: files, menuAssets: assets, menuAssetId: assets[0]?.assetId ?? null };
+    });
   }
 
   /** Uploads the same logo again. The file is never lost. */
@@ -424,13 +410,12 @@ function RegisterWizardInner(): ReactElement {
     }
   }
 
-  /** Uploads the same menu again from the step that failed. The file is never lost. */
-  function handleRetryMenu(): void {
-    const file: File | null = data.menuFile;
+  /** Uploads one failed menu file again. The other files keep their state. */
+  function handleRetryMenuFile(fileName: string): void {
+    const file: File | undefined = data.menuFiles.find((entry: File) => entry.name === fileName);
 
-    if (file !== null) {
-      const pending: PendingUpload | null = menuPendingRef.current;
-      void runMenuUpload(file, pending !== null && pending.file === file ? pending.stage : null);
+    if (file !== undefined) {
+      void runMenuUpload([file]);
     }
   }
 
@@ -471,9 +456,14 @@ function RegisterWizardInner(): ReactElement {
       }
     }
 
-    // The request carries the asset ids, so the two files must be confirmed first.
-    if (data.logoAssetId === null || data.menuAssetId === null) {
-      const isUploading: boolean = logoUpload.status === "uploading" || menuUpload.status === "uploading";
+    // The request carries the asset ids, so the logo and every menu file must be confirmed first.
+    const isMenuComplete: boolean =
+      data.menuFiles.length > 0 && data.menuAssets.length === data.menuFiles.length;
+
+    if (data.logoAssetId === null || data.menuAssetId === null || !isMenuComplete) {
+      const isUploading: boolean =
+        logoUpload.status === "uploading" ||
+        menuUploads.some((entry: MenuFileUploadState) => entry.status === "uploading");
       setSubmitError(t(lang, isUploading ? "upload.uploading" : "upload.failed"));
       setErrors({});
       setCurrentStep(1);
@@ -541,7 +531,7 @@ function RegisterWizardInner(): ReactElement {
     setLogoUrl(null);
     setMenuUrl(null);
     setLogoUpload(EMPTY_UPLOAD_STATE);
-    setMenuUpload(EMPTY_UPLOAD_STATE);
+    setMenuUploads([]);
     setData(INITIAL_DATA);
     setErrors({});
     setSubmitError("");
@@ -645,15 +635,15 @@ function RegisterWizardInner(): ReactElement {
                         errors={errors}
                         lang={lang}
                         logoUrl={logoUrl}
-                        menuUrl={menuUrl}
                         logoUpload={logoUpload}
-                        menuUpload={menuUpload}
+                        menuUploads={menuUploads}
                         onChange={handleChange}
                         onBlurField={handleFieldBlur}
                         onSelectLogo={handleSelectLogo}
-                        onSelectMenu={handleSelectMenu}
+                        onAddMenuFiles={handleAddMenuFiles}
+                        onRemoveMenuFile={handleRemoveMenuFile}
                         onRetryLogo={handleRetryLogo}
-                        onRetryMenu={handleRetryMenu}
+                        onRetryMenuFile={handleRetryMenuFile}
                       />
                     );
                   }

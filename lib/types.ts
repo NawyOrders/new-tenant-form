@@ -47,13 +47,23 @@ export type BrandColors = {
   accentColor: string; // an empty string means "not chosen yet"
 };
 
+/** One confirmed menu file. The current backend returns no upload token, so it stays null. */
+export type MenuAsset = {
+  assetId: string;
+  uploadToken: string | null;
+  fileName: string;
+  contentType: string;
+};
+
 /** The whole registration form. This is the ONE object kept in the RegisterWizard state. */
 export type RegisterData = {
   restaurantNameAr: string;
   restaurantNameEn: string;
   logoFile: File | null; // kept for the local preview and for a retry after a failed upload
-  menuFile: File | null; // kept for the local preview and for a retry after a failed upload
+  menuFiles: File[]; // kept for the local preview and for a retry after a failed upload; max 10
   logoAssetId: string | null;
+  menuAssets: MenuAsset[]; // confirmed menu files, in the order their files were added
+  // TODO: the submit payload accepts one menu asset until the backend confirms menuAssetIds.
   menuAssetId: string | null;
   owner: OwnerInfo;
   brand: BrandColors;
@@ -75,6 +85,13 @@ export type UploadErrorKey =
 
 /** The state of one file upload, kept beside the file in the wizard. */
 export type UploadState = {
+  status: UploadStatus;
+  errorKey: UploadErrorKey | null;
+};
+
+/** The state of one menu file upload. The name matches the file in RegisterData.menuFiles. */
+export type MenuFileUploadState = {
+  fileName: string;
   status: UploadStatus;
   errorKey: UploadErrorKey | null;
 };

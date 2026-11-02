@@ -2,6 +2,7 @@
 // file on the storage, and confirms the asset so the backend can use it.
 
 import { ApiError, apiPost, apiPutFile } from "./client";
+import type { MenuAsset } from "@/lib/types";
 import type { UploadFileType, UploadRequestFile, UploadUrlItem } from "./types";
 
 const UPLOAD_URLS_PATH = "/api/v1/onboarding-requests/upload-urls";
@@ -83,6 +84,85 @@ export async function uploadFile(uploadUrl: string, file: File, contentType: str
 /** Confirms the uploaded asset so the onboarding request accepts it. */
 export async function confirmAsset(assetId: string): Promise<void> {
   await apiPost<unknown>(`${ASSETS_PATH}/${encodeURIComponent(assetId)}/confirm`, {});
+}
+
+/** Where the upload of one menu file stopped. */
+export type MenuUploadStage = "urls" | "put" | "confirm";
+
+/** Why the upload of one menu file stopped. */
+export type MenuUploadReason = "tooLarge" | "missingConfig" | "api";
+
+/** The result of one menu file of a batch. The index points into the files array. */
+export type MenuUploadOutcome =
+  | { index: number; status: "done"; asset: MenuAsset }
+  | { index: number; status: "failed"; stage: MenuUploadStage; reason: MenuUploadReason };
+
+/** Reads the reason of one failed menu file upload. */
+function menuFailureReason(error: unknown): MenuUploadReason {
+  if (error instanceof UploadTooLargeError) return "tooLarge";
+  if (error instanceof ApiError && error.kind === "missing_config") return "missingConfig";
+  return "api";
+}
+
+/**
+ * Uploads every menu file in order. One upload-urls call asks for one slot per file, and the
+ * slots are matched to the files by index. A slot count that differs from the file count stops
+ * the whole batch, because a file must never go to another file's slot. A failure of one file
+ * keeps the files that finished and marks only that file as failed.
+ */
+export async function uploadMenuFiles(files: File[]): Promise<MenuUploadOutcome[]> {
+  const requested: UploadRequestFile[] = files.map((file) => ({
+    type: UPLOAD_TYPE_MENU,
+    fileName: file.name,
+    contentType: file.type,
+    sizeBytes: file.size,
+  }));
+  const items: UploadUrlItem[] = await createUploadUrls(requested);
+
+  if (items.length !== files.length) {
+    throw new ApiError("server", `upload-urls returned ${items.length} uploads for ${files.length} files`);
+  }
+
+  const outcomes: MenuUploadOutcome[] = [];
+
+  for (let index = 0; index < files.length; index += 1) {
+    const file: File = files[index];
+    const item: UploadUrlItem = items[index];
+    let stage: MenuUploadStage = "urls";
+
+    try {
+      if (file.size > item.maximumSizeBytes) {
+        throw new UploadTooLargeError();
+      }
+
+      // The storage signs this header, so a different browser type must stop the upload here.
+      if (file.type !== "" && file.type !== item.contentType) {
+        throw new ApiError("server", `The file is ${file.type} but the upload URL signs ${item.contentType}`);
+      }
+
+      stage = "put";
+      await uploadFile(item.uploadUrl, file, item.contentType);
+
+      stage = "confirm";
+      await confirmAsset(item.assetId);
+
+      outcomes.push({
+        index,
+        status: "done",
+        asset: {
+          assetId: item.assetId,
+          // The current Swagger returns no upload token, and confirm takes no token header.
+          uploadToken: null,
+          fileName: file.name,
+          contentType: item.contentType,
+        },
+      });
+    } catch (error) {
+      outcomes.push({ index, status: "failed", stage, reason: menuFailureReason(error) });
+    }
+  }
+
+  return outcomes;
 }
 
 /** Where the logo upload stopped. */

@@ -8,6 +8,7 @@
 import { useState } from "react";
 import type { ReactElement } from "react";
 import FileUpload from "@/components/ui/FileUpload";
+import MenuFileUpload from "@/components/ui/MenuFileUpload";
 import TextInput from "@/components/ui/TextInput";
 import {
   ACCEPTED_LOGO_INPUT,
@@ -15,10 +16,11 @@ import {
   ACCEPTED_MENU_INPUT,
   ACCEPTED_MENU_TYPES,
   MAX_LOGO_SIZE_MB,
+  MAX_MENU_FILES,
   MAX_MENU_SIZE_MB,
 } from "@/lib/constants";
 import { t } from "@/lib/i18n";
-import type { Lang, RegisterData, StepErrors, UploadState } from "@/lib/types";
+import type { Lang, MenuFileUploadState, RegisterData, StepErrors, UploadState } from "@/lib/types";
 
 type Step1MainInfoProps = {
   data: RegisterData;
@@ -26,23 +28,23 @@ type Step1MainInfoProps = {
   lang: Lang;
   /** The local picture of the logo, used to show the thumbnail. */
   logoUrl: string | null;
-  /** The local picture of the menu, null when the menu is a PDF file. */
-  menuUrl: string | null;
   /** The state of the logo upload. */
   logoUpload: UploadState;
-  /** The state of the menu upload. */
-  menuUpload: UploadState;
+  /** The state of every menu file upload. */
+  menuUploads: MenuFileUploadState[];
   onChange: (patch: Partial<RegisterData>) => void;
   /** Called with the field key when a validated field loses focus. */
   onBlurField: (field: string) => void;
   /** Keeps the logo and starts its upload (null removes it). */
   onSelectLogo: (file: File | null) => void;
-  /** Keeps the menu and starts its upload (null removes it). */
-  onSelectMenu: (file: File | null) => void;
+  /** Adds the chosen menu files and starts their upload. */
+  onAddMenuFiles: (files: File[]) => void;
+  /** Removes one menu file. */
+  onRemoveMenuFile: (fileName: string) => void;
   /** Uploads the same logo again after a failure. */
   onRetryLogo: () => void;
-  /** Uploads the same menu again after a failure. */
-  onRetryMenu: () => void;
+  /** Uploads one failed menu file again. */
+  onRetryMenuFile: (fileName: string) => void;
 };
 
 export default function Step1MainInfo({
@@ -50,15 +52,15 @@ export default function Step1MainInfo({
   errors,
   lang,
   logoUrl,
-  menuUrl,
   logoUpload,
-  menuUpload,
+  menuUploads,
   onChange,
   onBlurField,
   onSelectLogo,
-  onSelectMenu,
+  onAddMenuFiles,
+  onRemoveMenuFile,
   onRetryLogo,
-  onRetryMenu,
+  onRetryMenuFile,
 }: Step1MainInfoProps): ReactElement {
   const [fileError, setFileError] = useState<{ logo: string; menu: string }>({ logo: "", menu: "" });
 
@@ -84,33 +86,63 @@ export default function Step1MainInfo({
     onSelectLogo(file);
   }
 
-  /** Checks the rules of the menu, then hands the file to the upload. */
-  function handleMenuFile(file: File | null): void {
-    if (file === null) {
-      setFileError({ ...fileError, menu: "" });
-      onSelectMenu(null);
+  /** Checks the rules of the new menu files, then hands them to the upload. */
+  function handleMenuFiles(incoming: File[]): void {
+    if (incoming.length === 0) {
       return;
     }
 
-    if (!ACCEPTED_MENU_TYPES.includes(file.type)) {
-      setFileError({ ...fileError, menu: t(lang, "error.fileType") });
-      return;
-    }
+    const names: Set<string> = new Set<string>(
+      data.menuFiles.map((file: File) => file.name.trim().toLowerCase()),
+    );
+    let count: number = data.menuFiles.length;
 
-    if (file.size > MAX_MENU_SIZE_MB * 1024 * 1024) {
-      setFileError({ ...fileError, menu: t(lang, "upload.tooLarge") });
-      return;
+    for (const file of incoming) {
+      if (!ACCEPTED_MENU_TYPES.includes(file.type)) {
+        setFileError({ ...fileError, menu: t(lang, "error.fileType") });
+        return;
+      }
+
+      if (file.size > MAX_MENU_SIZE_MB * 1024 * 1024) {
+        setFileError({ ...fileError, menu: t(lang, "upload.tooLarge") });
+        return;
+      }
+
+      const name: string = file.name.trim().toLowerCase();
+
+      if (names.has(name)) {
+        setFileError({ ...fileError, menu: t(lang, "menu.duplicate") });
+        return;
+      }
+
+      names.add(name);
+      count += 1;
+
+      if (count > MAX_MENU_FILES) {
+        setFileError({ ...fileError, menu: t(lang, "menu.tooManyFiles") });
+        return;
+      }
     }
 
     setFileError({ ...fileError, menu: "" });
-    onSelectMenu(file);
+    onAddMenuFiles(incoming);
   }
 
   const logoError: string = fileError.logo !== "" ? fileError.logo : (errors["logoFile"] ?? "");
   const menuError: string = fileError.menu !== "" ? fileError.menu : (errors["menuFile"] ?? "");
-  // A PDF file has no picture, so only the images get a thumbnail.
-  const menuThumbnailUrl: string | null =
-    data.menuFile !== null && data.menuFile.type.startsWith("image/") ? menuUrl : null;
+  const isMenuUploading: boolean = menuUploads.some((entry: MenuFileUploadState) => entry.status === "uploading");
+
+  /** Removes one menu file and clears the list error, because the list changed. */
+  function handleRemoveMenu(fileName: string): void {
+    setFileError({ ...fileError, menu: "" });
+    onRemoveMenuFile(fileName);
+  }
+
+  /** Retries one menu file and clears its list error. */
+  function handleRetryMenu(fileName: string): void {
+    setFileError({ ...fileError, menu: "" });
+    onRetryMenuFile(fileName);
+  }
 
   return (
     <div>
@@ -159,21 +191,17 @@ export default function Step1MainInfo({
         />
 
         {/* Field B: the menu of the restaurant. It is NOT the same field as the logo. */}
-        <FileUpload
+        <MenuFileUpload
           id="restaurant-menu"
-          label={t(lang, "field.menu")}
-          dropText={t(lang, "field.menu.drop")}
-          hint={t(lang, "field.menu.hint")}
-          accept={ACCEPTED_MENU_INPUT}
-          file={data.menuFile}
-          previewUrl={menuThumbnailUrl}
+          lang={lang}
+          files={data.menuFiles}
+          uploads={menuUploads}
           error={menuError}
-          removeLabel={t(lang, "btn.remove")}
-          onSelect={handleMenuFile}
-          uploadStatus={menuUpload.status}
-          statusText={uploadStatusText(lang, menuUpload)}
-          retryLabel={t(lang, "upload.retry")}
-          onRetry={onRetryMenu}
+          accept={ACCEPTED_MENU_INPUT}
+          disabled={isMenuUploading}
+          onAdd={handleMenuFiles}
+          onRemove={handleRemoveMenu}
+          onRetry={handleRetryMenu}
         />
 
         <TextInput

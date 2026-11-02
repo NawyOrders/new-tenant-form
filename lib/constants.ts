@@ -19,8 +19,11 @@ export const DEFAULT_COUNTRY_CODE = "EG";
 /** The maximum size of the logo file, in MB. */
 export const MAX_LOGO_SIZE_MB = 5;
 
-/** The maximum size of the menu file, in MB. */
-export const MAX_MENU_SIZE_MB = 10;
+/** The maximum size of one menu file, in MB. */
+export const MAX_MENU_SIZE_MB = 15;
+
+/** The maximum number of menu files in one registration. */
+export const MAX_MENU_FILES = 10;
 
 /** The file types accepted for the logo. */
 export const ACCEPTED_LOGO_TYPES: string[] = ["image/png", "image/jpeg", "image/svg+xml"];
@@ -29,10 +32,10 @@ export const ACCEPTED_LOGO_TYPES: string[] = ["image/png", "image/jpeg", "image/
 export const ACCEPTED_LOGO_INPUT = "image/png,image/jpeg,image/svg+xml";
 
 /** The file types accepted for the menu. */
-export const ACCEPTED_MENU_TYPES: string[] = ["application/pdf", "image/png", "image/jpeg"];
+export const ACCEPTED_MENU_TYPES: string[] = ["application/pdf", "image/png", "image/jpeg", "image/webp"];
 
 /** The same types, in the format the file input wants. */
-export const ACCEPTED_MENU_INPUT = "application/pdf,image/png,image/jpeg";
+export const ACCEPTED_MENU_INPUT = "application/pdf,image/png,image/jpeg,image/webp";
 
 /** The steps of the wizard built from STEP_ORDER. The titles are translation keys. */
 export const STEPS: StepInfo[] = STEP_ORDER.map((key, index) => ({

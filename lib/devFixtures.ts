@@ -8,8 +8,9 @@ export function getDevFixtures(): Partial<RegisterData> {
     restaurantNameAr: "مطعم تجريبي",
     restaurantNameEn: "Demo Restaurant",
     logoFile: null,
-    menuFile: null,
+    menuFiles: [],
     logoAssetId: null,
+    menuAssets: [],
     menuAssetId: null,
     owner: { fullName: "أحمد محمود", phone: "01012345678", email: "test@restaurant.com" },
     brand: {

@@ -3,7 +3,13 @@
 
 import { t } from "./i18n";
 import type { TranslationKey } from "./i18n";
-import { MAX_BRANCHES, STEP_ORDER } from "./constants";
+import {
+  ACCEPTED_MENU_TYPES,
+  MAX_BRANCHES,
+  MAX_MENU_FILES,
+  MAX_MENU_SIZE_MB,
+  STEP_ORDER,
+} from "./constants";
 import type { Lang, RegisterData } from "./types";
 
 /** True when the text looks like #RRGGBB. */
@@ -101,6 +107,39 @@ export function isValidEmail(value: string): boolean {
   return /^[A-Za-z0-9._%+-]+@[A-Za-z0-9-]+(\.[A-Za-z0-9-]+)*\.[A-Za-z]{2,}$/.test(value.trim());
 }
 
+/** The error of the menu files, empty when the list follows the count, type, size and name rules. */
+function getMenuFilesError(files: File[], lang: Lang): string {
+  if (files.length === 0) {
+    return t(lang, "error.menuMissing");
+  }
+
+  if (files.length > MAX_MENU_FILES) {
+    return t(lang, "menu.tooManyFiles");
+  }
+
+  const names: Set<string> = new Set<string>();
+
+  for (const file of files) {
+    const name: string = file.name.trim().toLowerCase();
+
+    if (names.has(name)) {
+      return t(lang, "menu.duplicate");
+    }
+
+    names.add(name);
+
+    if (!ACCEPTED_MENU_TYPES.includes(file.type)) {
+      return t(lang, "error.fileType");
+    }
+
+    if (file.size > MAX_MENU_SIZE_MB * 1024 * 1024) {
+      return t(lang, "upload.tooLarge");
+    }
+  }
+
+  return "";
+}
+
 /** Step 1: the main info of the restaurant and of the owner. */
 export function validateStep1(data: RegisterData, lang: Lang): Record<string, string> {
   const errors: Record<string, string> = {};
@@ -119,8 +158,9 @@ export function validateStep1(data: RegisterData, lang: Lang): Record<string, st
     errors["logoFile"] = t(lang, "error.logoMissing");
   }
 
-  if (data.menuFile === null) {
-    errors["menuFile"] = t(lang, "error.menuMissing");
+  const menuFilesError: string = getMenuFilesError(data.menuFiles, lang);
+  if (menuFilesError !== "") {
+    errors["menuFile"] = menuFilesError;
   }
 
   const ownerNameError: string = getNameError(data.owner.fullName, lang);

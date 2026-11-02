@@ -50,6 +50,8 @@ export default function PhonePreview({
 
   const restaurantNameAr: string = previewName(data.restaurantNameAr, "ar", lang);
   const restaurantNameEn: string = previewName(data.restaurantNameEn, "en", lang);
+  // The preview shows the first menu file; the full list is shown in step 1.
+  const menuFile: File | null = data.menuFiles[0] ?? null;
 
   const ownerName: string =
     data.owner.fullName.trim() === ""
@@ -175,13 +177,13 @@ export default function PhonePreview({
                 {t(lang, "preview.menu")}
               </p>
 
-              {data.menuFile === null ? (
+              {menuFile === null ? (
                 <p className="mt-1 text-[11px]" style={{ color: mutedColor }}>
                   {t(lang, "preview.noMenu")}
                 </p>
               ) : (
                 <>
-                  <p className="mt-1 truncate text-[11px] font-semibold">{data.menuFile.name}</p>
+                  <p className="mt-1 truncate text-[11px] font-semibold">{menuFile.name}</p>
                   <button
                     type="button"
                     onClick={handleOpenMenu}
