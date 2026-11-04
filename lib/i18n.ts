@@ -202,7 +202,10 @@ export const translations = {
   "error.submit": { ar: "حدث خطأ، حاول مرة أخرى", en: "Something went wrong, please try again" },
   "error.phone": { ar: "رقم الجوال غير صحيح", en: "Invalid mobile number" },
   "error.email": { ar: "البريد الإلكتروني غير صحيح", en: "Invalid email address" },
-  "error.email.invalid": { ar: "أدخل بريد إلكتروني صحيح", en: "Enter a valid email address" },
+  "error.email.invalid": {
+    ar: "أدخل بريدًا صحيحًا: 3 أحرف على الأقل قبل @ ثم مزود معروف أو نطاق com أو net",
+    en: "Enter a valid email: 3+ characters before @, then a known provider or a .com / .net domain",
+  },
   "error.name.invalid": { ar: "استخدم حروف عربية أو إنجليزية فقط", en: "Use Arabic or English letters only" },
   "error.nameAr.invalid": { ar: "استخدم حروف عربية فقط", en: "Use Arabic letters only" },
   "error.nameEn.invalid": { ar: "استخدم حروف إنجليزية فقط", en: "Use English letters only" },

@@ -102,9 +102,67 @@ function getNameError(value: string, lang: Lang, script: NameScript = "any"): st
   return isValidNameFor(value, script) ? "" : t(lang, getNameErrorKey(value, script));
 }
 
-/** True when the email looks like an email address. */
+/** The providers accepted without a length rule, compared case-insensitively. */
+const KNOWN_EMAIL_PROVIDERS: string[] = [
+  "gmail.com",
+  "yahoo.com",
+  "outlook.com",
+  "hotmail.com",
+  "live.com",
+  "icloud.com",
+];
+
+/** Splits the value at its one "@", or returns null when it does not have exactly one. */
+function splitAtSign(value: string): { local: string; domain: string } | null {
+  const parts: string[] = value.split("@");
+
+  if (parts.length !== 2) {
+    return null;
+  }
+
+  const local: string = parts[0];
+  const domain: string = parts[1];
+
+  if (local === "" || domain === "") {
+    return null;
+  }
+
+  return { local, domain };
+}
+
+/** True when the local part is 3+ characters of letters, digits, dot, underscore or hyphen, with a letter. */
+function isValidLocalPart(local: string): boolean {
+  return local.length >= 3 && /^[A-Za-z0-9._-]+$/.test(local) && /[A-Za-z]/.test(local);
+}
+
+/** True when the domain is exactly one of the known providers. */
+function isKnownProvider(domain: string): boolean {
+  return KNOWN_EMAIL_PROVIDERS.includes(domain.toLowerCase());
+}
+
+/** True when the domain ends in com or net and its label before the TLD is 4+ letters or digits. */
+function isValidCustomDomain(domain: string): boolean {
+  const labels: string[] = domain.toLowerCase().split(".");
+  const tld: string | undefined = labels[labels.length - 1];
+
+  if (labels.length < 2 || (tld !== "com" && tld !== "net")) {
+    return false;
+  }
+
+  const mainLabel: string = labels[labels.length - 2];
+
+  return mainLabel.length >= 4 && /^[A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?$/.test(mainLabel);
+}
+
+/** True when the email follows the rule: a valid local part and a known provider or a com / net domain. */
 export function isValidEmail(value: string): boolean {
-  return /^[A-Za-z0-9._%+-]+@[A-Za-z0-9-]+(\.[A-Za-z0-9-]+)*\.[A-Za-z]{2,}$/.test(value.trim());
+  const parts: { local: string; domain: string } | null = splitAtSign(value.trim());
+
+  if (parts === null || !isValidLocalPart(parts.local)) {
+    return false;
+  }
+
+  return isKnownProvider(parts.domain) || isValidCustomDomain(parts.domain);
 }
 
 /** The error of the menu files, empty when the list follows the count, type, size and name rules. */
