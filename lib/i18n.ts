@@ -159,6 +159,8 @@ export const translations = {
     ar: "لم نجد هذا العنوان، جرب كتابة اسم الشارع أو المنطقة",
     en: "Address not found, try the street or area name",
   },
+  "branch.suggestions.loading": { ar: "جاري البحث...", en: "Searching..." },
+  "branch.suggestions.none": { ar: "لا توجد نتائج لهذا البحث", en: "No results for this search" },
 
   // ----- Map -----
   "map.hint": { ar: "اضغط على الخريطة لتحديد الموقع", en: "Click the map to set the location" },
