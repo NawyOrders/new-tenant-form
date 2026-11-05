@@ -2,6 +2,7 @@
 // the features of the packages, and the map defaults.
 
 import { theme } from "./theme";
+import type { TranslationKey } from "./i18n";
 import type { Branch, BilingualText, RecommendedPalette, StepInfo } from "./types";
 
 /** The ordered list of step keys. Reordering this array moves a step. */
@@ -105,6 +106,11 @@ export const FEATURES: Array<{ id: string; label: BilingualText }> = [
   { id: "reports", label: { ar: "تقارير المبيعات اليومية", en: "Daily sales reports" } },
   { id: "menu", label: { ar: "ادارة المنيو والاصناف", en: "Menu and item management" } },
   { id: "support", label: { ar: "دعم عبر البريد الالكتروني", en: "Email support" } },
+];
+
+/** The extra features that only the Growth package has. MOCK data for now. */
+export const GROWTH_FEATURES: Array<{ id: string; labelKey: TranslationKey }> = [
+  { id: "ai-service", labelKey: "package.feature.aiService" },
 ];
 
 /** A new empty branch, with the default opening hours. */

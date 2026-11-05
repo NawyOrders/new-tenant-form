@@ -51,7 +51,7 @@ describe("limits and accepted files", () => {
   test("branch and size limits", () => {
     assert.equal(MAX_BRANCHES, 2);
     assert.equal(MAX_LOGO_SIZE_MB, 5);
-    assert.equal(MAX_MENU_SIZE_MB, 10);
+    assert.equal(MAX_MENU_SIZE_MB, 15);
   });
 
   test("logo types match the input attribute", () => {
@@ -60,7 +60,7 @@ describe("limits and accepted files", () => {
   });
 
   test("menu types match the input attribute", () => {
-    assert.deepEqual(ACCEPTED_MENU_TYPES, ["application/pdf", "image/png", "image/jpeg"]);
+    assert.deepEqual(ACCEPTED_MENU_TYPES, ["application/pdf", "image/png", "image/jpeg", "image/webp"]);
     assert.equal(ACCEPTED_MENU_INPUT, ACCEPTED_MENU_TYPES.join(","));
   });
 });

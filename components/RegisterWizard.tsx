@@ -66,6 +66,9 @@ function menuFailureKey(outcome: Extract<MenuUploadOutcome, { status: "failed" }
   return "upload.step.urls";
 }
 
+/** The localStorage key of the language. */
+const LANG_STORAGE_KEY = "nawy.lang";
+
 function RegisterWizardInner(): ReactElement {
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -143,6 +146,19 @@ function RegisterWizardInner(): ReactElement {
     document.documentElement.dir = lang === "ar" ? "rtl" : "ltr";
   }, [lang]);
 
+  // Read the stored language after the first render, so the server and client render match.
+  useEffect(() => {
+    try {
+      const stored: string | null = window.localStorage.getItem(LANG_STORAGE_KEY);
+
+      if (stored === "ar" || stored === "en") {
+        setLang(stored);
+      }
+    } catch {
+      // Storage can be blocked; the language stays in memory only.
+    }
+  }, []);
+
   /** Makes a new local address for a file and frees the old one. */
   function createLocalUrl(file: File | null, currentUrl: string | null): string | null {
     if (currentUrl !== null) {
@@ -199,6 +215,12 @@ function RegisterWizardInner(): ReactElement {
   function handleToggleLang(): void {
     const nextLang: Lang = lang === "ar" ? "en" : "ar";
     setLang(nextLang);
+
+    try {
+      window.localStorage.setItem(LANG_STORAGE_KEY, nextLang);
+    } catch {
+      // Storage can be blocked; the language stays in memory only.
+    }
 
     if (Object.keys(errors).length > 0) {
       setErrors(validateStep(currentStep, data, nextLang));

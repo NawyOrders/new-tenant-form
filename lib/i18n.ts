@@ -190,6 +190,7 @@ export const translations = {
   "package.plan.starter": { ar: "Starter", en: "Starter" },
   "package.plan.growth": { ar: "Growth", en: "Growth" },
   "package.feature.ai": { ar: "ميزات الذكاء الاصطناعي", en: "AI features" },
+  "package.feature.aiService": { ar: "خدمة الذكاء الاصطناعي", en: "AI service" },
   "package.noSelection": { ar: "لم يتم اختيار باقة بعد", en: "No package selected yet" },
   "package.selected": { ar: "تم الاختيار", en: "Selected" },
   "package.features": { ar: "المميزات", en: "Features" },
@@ -202,7 +203,7 @@ export const translations = {
   "error.maxBranches": { ar: "أقصى عدد للفروع فرعين", en: "You can add at most 2 branches" },
   "error.minBranch": { ar: "يجب إضافة فرع واحد على الأقل", en: "Add at least one branch" },
   "error.submit": { ar: "حدث خطأ، حاول مرة أخرى", en: "Something went wrong, please try again" },
-  "error.phone": { ar: "رقم الجوال غير صحيح", en: "Invalid mobile number" },
+  "error.phone.invalid": { ar: "رقم الجوال غير صحيح", en: "Invalid mobile number" },
   "error.email": { ar: "البريد الإلكتروني غير صحيح", en: "Invalid email address" },
   "error.email.invalid": {
     ar: "أدخل بريدًا صحيحًا: 3 أحرف على الأقل قبل @ ثم مزود معروف أو نطاق com أو net",
