@@ -11,11 +11,45 @@ export function isValidHexColor(value: string): boolean {
   return /^#[0-9A-Fa-f]{6}$/.test(value.trim());
 }
 
-/** True when the phone is an Egyptian mobile number (010, 011, 012 or 015). */
-export function isValidEgyptianPhone(value: string): boolean {
-  const digits: string = value.replace(/[\s()-]/g, "");
+/** Removes a pasted country code and returns the 11-digit local mobile form. */
+export function normalizeEgyptianPhone(value: string): string {
+  const compact: string = value.replace(/[\s()-]/g, "");
+  let digits: string = compact;
 
-  return /^(\+?20|0020|0)?1[0125]\d{8}$/.test(digits);
+  if (digits.startsWith("+20")) {
+    digits = digits.slice(3);
+  } else if (digits.startsWith("0020")) {
+    digits = digits.slice(4);
+  } else if (digits.startsWith("20") && digits.length === 12) {
+    digits = digits.slice(2);
+  }
+
+  const localBody: string = digits.replace(/\D/g, "");
+
+  // An international number has no leading zero; the local form needs it back.
+  return /^1[0125]\d{8}$/.test(localBody) ? `0${localBody}` : localBody;
+}
+
+/** True for a local Egyptian mobile number: 11 digits starting with 010, 011, 012 or 015. */
+export function isValidEgyptianPhone(value: string): boolean {
+  return /^01[0125]\d{8}$/.test(normalizeEgyptianPhone(value));
+}
+
+/** The local form shown in the input. The form itself keeps the +20 form. */
+export function phoneForInput(stored: string): string {
+  return stored.startsWith("+20") ? `0${stored.slice(3)}` : stored;
+}
+
+/** The stored form: +20 followed by the 10 digits after the leading zero. */
+export function toStoredEgyptianPhone(value: string): string {
+  const local: string = normalizeEgyptianPhone(value);
+
+  if (local === "" || local === "0") {
+    return local;
+  }
+
+  // TODO: confirm with the backend that ownerPhone is +20XXXXXXXXXX before changing this format.
+  return local.startsWith("0") ? `+20${local.slice(1)}` : local;
 }
 
 const NAME_MIN_LENGTH = 2;
@@ -189,7 +223,7 @@ export function validateStep1(data: RegisterData, lang: Lang): Record<string, st
   if (data.owner.phone.trim() === "") {
     errors["owner.phone"] = t(lang, "error.required");
   } else if (!isValidEgyptianPhone(data.owner.phone)) {
-    errors["owner.phone"] = t(lang, "error.phone");
+    errors["owner.phone"] = t(lang, "error.phone.invalid");
   }
 
   if (data.owner.email.trim() === "") {

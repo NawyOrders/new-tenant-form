@@ -6,7 +6,7 @@
 import { useEffect } from "react";
 import type { ReactElement } from "react";
 import Button from "@/components/ui/Button";
-import { FEATURES } from "@/lib/constants";
+import { FEATURES, GROWTH_FEATURES } from "@/lib/constants";
 import { formatNumber, t } from "@/lib/i18n";
 import type { TranslationKey } from "@/lib/i18n";
 import type { ActiveSubscriptionOffer, Lang, OffersStatus, RegisterData, StepErrors } from "@/lib/types";
@@ -182,9 +182,19 @@ export default function Step4Package({
                     </li>
                   ))}
                   {group.packageCode === "growth" ? (
-                    <li className="rounded-pill border border-line bg-soft/60 px-3 py-1 text-xs text-ink">
-                      {t(lang, "package.feature.ai")}
-                    </li>
+                    <>
+                      <li className="rounded-pill border border-line bg-soft/60 px-3 py-1 text-xs text-ink">
+                        {t(lang, "package.feature.ai")}
+                      </li>
+                      {GROWTH_FEATURES.map((feature) => (
+                        <li
+                          key={feature.id}
+                          className="rounded-pill border border-line bg-soft/60 px-3 py-1 text-xs text-ink"
+                        >
+                          {t(lang, feature.labelKey)}
+                        </li>
+                      ))}
+                    </>
                   ) : null}
                 </ul>
               </section>

@@ -63,6 +63,9 @@ const INITIAL_DATA: RegisterData = {
 /** The upload state before any file is chosen. */
 const EMPTY_UPLOAD_STATE: UploadState = { status: "idle", errorKey: null };
 
+/** The localStorage key of the language. */
+const LANG_STORAGE_KEY = "nawy.lang";
+
 /** The three steps of one upload, in order. */
 type UploadStage = "uploadUrls" | "put" | "confirm";
 
@@ -159,6 +162,19 @@ function RegisterWizardInner(): ReactElement {
     document.documentElement.dir = lang === "ar" ? "rtl" : "ltr";
   }, [lang]);
 
+  // Read the stored language after the first render, so the server and client render match.
+  useEffect(() => {
+    try {
+      const stored: string | null = window.localStorage.getItem(LANG_STORAGE_KEY);
+
+      if (stored === "ar" || stored === "en") {
+        setLang(stored);
+      }
+    } catch {
+      // Storage can be blocked; the language stays in memory only.
+    }
+  }, []);
+
   /** Makes a new local address for a file and frees the old one. */
   function createLocalUrl(file: File | null, currentUrl: string | null): string | null {
     if (currentUrl !== null) {
@@ -214,6 +230,12 @@ function RegisterWizardInner(): ReactElement {
   function handleToggleLang(): void {
     const nextLang: Lang = lang === "ar" ? "en" : "ar";
     setLang(nextLang);
+
+    try {
+      window.localStorage.setItem(LANG_STORAGE_KEY, nextLang);
+    } catch {
+      // Storage can be blocked; the language stays in memory only.
+    }
 
     if (Object.keys(errors).length > 0) {
       setErrors(validateStep(currentStep, data, nextLang));

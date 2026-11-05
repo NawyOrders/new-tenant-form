@@ -6,7 +6,7 @@
 "use client";
 
 import { useState } from "react";
-import type { ReactElement } from "react";
+import type { ChangeEvent, ReactElement } from "react";
 import FileUpload from "@/components/ui/FileUpload";
 import TextInput from "@/components/ui/TextInput";
 import {
@@ -19,6 +19,7 @@ import {
 } from "@/lib/constants";
 import { t } from "@/lib/i18n";
 import type { Lang, RegisterData, StepErrors, UploadState } from "@/lib/types";
+import { phoneForInput, toStoredEgyptianPhone } from "@/lib/validation";
 
 type Step1MainInfoProps = {
   data: RegisterData;
@@ -106,6 +107,11 @@ export default function Step1MainInfo({
     onSelectMenu(file);
   }
 
+  /** The field shows the local number; the form keeps the +20 stored form. */
+  function handlePhoneChange(event: ChangeEvent<HTMLInputElement>): void {
+    onChange({ owner: { ...data.owner, phone: toStoredEgyptianPhone(event.target.value) } });
+  }
+
   const logoError: string = fileError.logo !== "" ? fileError.logo : (errors["logoFile"] ?? "");
   const menuError: string = fileError.menu !== "" ? fileError.menu : (errors["menuFile"] ?? "");
   // A PDF file has no picture, so only the images get a thumbnail.
@@ -188,18 +194,56 @@ export default function Step1MainInfo({
         />
 
         <div className="grid gap-5 sm:grid-cols-2">
-          <TextInput
-            label={t(lang, "field.phone")}
-            name="owner-phone"
-            type="tel"
-            dir="ltr"
-            placeholder={t(lang, "field.phone.placeholder")}
-            hint={t(lang, "field.phone.hint")}
-            value={data.owner.phone}
-            error={errors["owner.phone"]}
-            required
-            onChange={(value) => onChange({ owner: { ...data.owner, phone: value } })}
-          />
+          <div>
+            <label htmlFor="owner-phone" className="mb-2 block text-sm font-semibold text-ink">
+              {t(lang, "field.phone")}
+              <span className="text-danger-strong"> *</span>
+            </label>
+
+            <div
+              dir="ltr"
+              className={`flex h-12 items-center overflow-hidden rounded-panel border bg-card transition focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/30 ${
+                errors["owner.phone"] !== undefined ? "border-danger-strong" : "border-line"
+              }`}
+            >
+              {/* The country code is fixed and is not part of the typed value. */}
+              <span className="pointer-events-none flex h-full shrink-0 select-none items-center border-e border-line px-3 text-sm font-semibold text-muted">
+                +20
+              </span>
+
+              <input
+                id="owner-phone"
+                name="owner-phone"
+                type="tel"
+                inputMode="numeric"
+                autoComplete="tel"
+                dir="ltr"
+                value={phoneForInput(data.owner.phone)}
+                placeholder={t(lang, "field.phone.placeholder")}
+                required
+                aria-invalid={errors["owner.phone"] !== undefined}
+                aria-describedby={
+                  errors["owner.phone"] !== undefined ? "owner-phone-error" : "owner-phone-hint"
+                }
+                onChange={handlePhoneChange}
+                className="h-full w-full bg-transparent px-3 text-sm text-ink outline-none placeholder:text-muted/70"
+              />
+            </div>
+
+            {errors["owner.phone"] !== undefined ? (
+              <p
+                id="owner-phone-error"
+                role="alert"
+                className="mt-1.5 text-xs font-semibold text-danger-strong"
+              >
+                {errors["owner.phone"]}
+              </p>
+            ) : (
+              <p id="owner-phone-hint" className="mt-1.5 text-xs text-muted">
+                {t(lang, "field.phone.hint")}
+              </p>
+            )}
+          </div>
 
           <TextInput
             label={t(lang, "field.email")}
