@@ -113,6 +113,62 @@ export async function searchAddress(
 }
 
 /**
+ * Returns up to 3 address suggestions for the typed text.
+ * Returns an empty array when nothing was found or when the service is not reachable.
+ */
+export async function searchAddressSuggestions(
+  query: string,
+  lang: Lang,
+  signal?: AbortSignal,
+): Promise<GeoResult[]> {
+  const url = `${NOMINATIM_BASE_URL}/search?format=jsonv2&addressdetails=1&q=${encodeURIComponent(query)}&countrycodes=eg&accept-language=${lang}&limit=3`;
+
+  try {
+    const response: Response = await fetch(url, {
+      headers: { Accept: "application/json" },
+      signal,
+    });
+
+    if (!response.ok) {
+      return [];
+    }
+
+    const places: unknown = await response.json();
+
+    if (!Array.isArray(places)) {
+      return [];
+    }
+
+    const results: GeoResult[] = [];
+
+    for (const value of places) {
+      const place = value as NominatimPlace;
+      const latitude: number = Number(place.lat);
+      const longitude: number = Number(place.lon);
+
+      if (Number.isNaN(latitude) || Number.isNaN(longitude) || typeof place.display_name !== "string") {
+        continue;
+      }
+
+      results.push({
+        latitude: round6(latitude),
+        longitude: round6(longitude),
+        displayName: place.display_name,
+        addressParts: readAddressParts(place.address),
+      });
+
+      if (results.length === 3) {
+        break;
+      }
+    }
+
+    return results;
+  } catch {
+    return [];
+  }
+}
+
+/**
  * Turns coordinates into an address text.
  * Returns null when nothing was found or when the service is not reachable.
  */

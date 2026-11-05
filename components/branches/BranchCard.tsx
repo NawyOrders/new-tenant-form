@@ -12,9 +12,9 @@ import { useEffect, useRef, useState } from "react";
 import type { KeyboardEvent, ReactElement } from "react";
 import Button from "@/components/ui/Button";
 import TextInput from "@/components/ui/TextInput";
-import { reverseGeocode, searchAddress } from "@/lib/geocoding";
+import { reverseGeocode, searchAddress, searchAddressSuggestions } from "@/lib/geocoding";
 import { t } from "@/lib/i18n";
-import type { Branch, GeoAddressParts, Lang, StepErrors } from "@/lib/types";
+import type { Branch, GeoAddressParts, GeoResult, Lang, StepErrors } from "@/lib/types";
 
 // Leaflet only works in the browser, so the real map is loaded with next/dynamic and ssr: false.
 const BranchMap = dynamic(() => import("@/components/branches/BranchMap"), {
@@ -56,12 +56,21 @@ export default function BranchCard({
   onRemove,
 }: BranchCardProps): ReactElement {
   const [searchQuery, setSearchQuery] = useState<string>("");
+  const [suggestions, setSuggestions] = useState<GeoResult[]>([]);
+  const [highlightedIndex, setHighlightedIndex] = useState<number>(-1);
   const [isSearching, setIsSearching] = useState<boolean>(false);
+  const [isSuggesting, setIsSuggesting] = useState<boolean>(false);
   const [isLocating, setIsLocating] = useState<boolean>(false);
   const [message, setMessage] = useState<string>("");
   const searchMoveRef = useRef<[number, number] | null>(null);
   /** The request that owns the map right now. A newer search aborts the old one. */
   const searchAbortRef = useRef<AbortController | null>(null);
+  /** The request that owns the suggestion list right now. */
+  const suggestAbortRef = useRef<AbortController | null>(null);
+  /** The pending automatic search, kept so the button can cancel it. */
+  const suggestTimerRef = useRef<number>(0);
+  /** The search field and its dropdown, used to close the list on an outside click. */
+  const searchAreaRef = useRef<HTMLDivElement | null>(null);
   /** When the last request to Nominatim was sent, in milliseconds. */
   const lastRequestAtRef = useRef<number>(0);
 
@@ -138,40 +147,148 @@ export default function BranchCard({
     }
   }
 
+  /** Fetches at most 3 suggestions for the typed text and shows them in the dropdown. */
+  async function runSuggestions(query: string, controller: AbortController): Promise<void> {
+    searchAbortRef.current?.abort();
+    searchAbortRef.current = null;
+    suggestAbortRef.current?.abort();
+    suggestAbortRef.current = controller;
+    setIsSuggesting(true);
+    setMessage("");
+
+    // Keep at least one second between two requests to Nominatim.
+    const gapMs: number = lastRequestAtRef.current + NOMINATIM_MIN_GAP_MS - Date.now();
+    const stoppedWhileWaiting: boolean =
+      gapMs > 0 && (await waitForGap(gapMs, controller.signal));
+
+    if (!stoppedWhileWaiting && !controller.signal.aborted) {
+      lastRequestAtRef.current = Date.now();
+      const results: GeoResult[] = await searchAddressSuggestions(query, lang, controller.signal);
+      const ownsRequest: boolean = suggestAbortRef.current === controller;
+
+      if (ownsRequest) {
+        suggestAbortRef.current = null;
+        setIsSuggesting(false);
+      }
+
+      // A stopped or stale request never changes the list.
+      if (ownsRequest && !controller.signal.aborted) {
+        if (results.length === 0) {
+          setSuggestions([]);
+          setHighlightedIndex(-1);
+          setMessage(t(lang, "branch.notFound"));
+          return;
+        }
+
+        setSuggestions(results);
+        setHighlightedIndex(-1);
+      }
+
+      return;
+    }
+
+    // A stopped request only resets the state it still owns.
+    if (suggestAbortRef.current === controller) {
+      suggestAbortRef.current = null;
+      setIsSuggesting(false);
+    }
+  }
+
+  /**
+   * Uses one suggestion as the branch location. The typed text stays in the search field,
+   * and the chosen address is shown in the read-only box.
+   */
+  function selectSuggestion(suggestion: GeoResult): void {
+    window.clearTimeout(suggestTimerRef.current);
+    suggestAbortRef.current?.abort();
+    suggestAbortRef.current = null;
+    searchAbortRef.current?.abort();
+    searchAbortRef.current = null;
+    setIsSuggesting(false);
+
+    searchMoveRef.current = [suggestion.latitude, suggestion.longitude];
+
+    // The city and the other parts come from Nominatim. A missing part keeps the typed value.
+    onChange({
+      address: suggestion.displayName,
+      latitude: suggestion.latitude,
+      longitude: suggestion.longitude,
+      ...addressPartsPatch(suggestion.addressParts),
+    });
+
+    setSuggestions([]);
+    setHighlightedIndex(-1);
+    setMessage("");
+  }
+
+  // A click outside the search field and its dropdown closes the list.
+  useEffect(() => {
+    if (suggestions.length === 0) {
+      return undefined;
+    }
+
+    function handlePointerDown(event: PointerEvent): void {
+      const area: HTMLDivElement | null = searchAreaRef.current;
+
+      if (area !== null && event.target instanceof Node && !area.contains(event.target)) {
+        setSuggestions([]);
+        setHighlightedIndex(-1);
+      }
+    }
+
+    document.addEventListener("pointerdown", handlePointerDown);
+
+    return () => document.removeEventListener("pointerdown", handlePointerDown);
+  }, [suggestions.length]);
+
   /**
    * FIELDS -> MAP: the button and the Enter key search at once. A pending automatic search
    * is cancelled so the same text is not sent twice.
    */
   async function handleSearch(): Promise<void> {
-    const query: string = branch.address.trim();
+    const query: string = searchQuery.trim();
+
+    window.clearTimeout(suggestTimerRef.current);
+    suggestAbortRef.current?.abort();
+    suggestAbortRef.current = null;
+    setSuggestions([]);
+    setHighlightedIndex(-1);
+    setIsSuggesting(false);
 
     if (query === "") {
       setMessage(t(lang, "branch.notFound"));
       return;
     }
 
-    setSearchQuery("");
     await runSearch(query, new AbortController());
   }
 
-  // Typing only updates the query. After a short pause one search runs for it.
+  // Typing only updates the query. After a short pause one suggestion search runs for it.
   useEffect(() => {
     const query: string = searchQuery.trim();
 
     if (query.length < SEARCH_MIN_CHARS) {
+      setSuggestions([]);
+      setHighlightedIndex(-1);
+      setIsSuggesting(false);
+      setMessage("");
       return;
     }
 
+    setSuggestions([]);
+    setHighlightedIndex(-1);
+    setMessage("");
+
     const controller = new AbortController();
-    const timer: number = window.setTimeout(() => {
-      void runSearch(query, controller);
+    suggestTimerRef.current = window.setTimeout(() => {
+      void runSuggestions(query, controller);
     }, SEARCH_DEBOUNCE_MS);
 
     return () => {
-      window.clearTimeout(timer);
+      window.clearTimeout(suggestTimerRef.current);
       controller.abort();
     };
-    // Adding runSearch here would restart the timer after every search result.
+    // Adding runSuggestions here would restart the timer after every search result.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchQuery, lang]);
 
@@ -200,8 +317,42 @@ export default function BranchCard({
   }
 
   function handleAddressKeyDown(event: KeyboardEvent<HTMLInputElement>): void {
+    if (event.key === "ArrowDown") {
+      if (suggestions.length === 0) {
+        return;
+      }
+
+      event.preventDefault();
+      setHighlightedIndex((prev: number) => (prev + 1) % suggestions.length);
+      return;
+    }
+
+    if (event.key === "ArrowUp") {
+      if (suggestions.length === 0) {
+        return;
+      }
+
+      event.preventDefault();
+      setHighlightedIndex((prev: number) => (prev <= 0 ? suggestions.length - 1 : prev - 1));
+      return;
+    }
+
+    if (event.key === "Escape") {
+      setSuggestions([]);
+      setHighlightedIndex(-1);
+      return;
+    }
+
     if (event.key === "Enter") {
       event.preventDefault();
+
+      const highlighted: GeoResult | undefined = suggestions[highlightedIndex];
+
+      if (highlighted !== undefined) {
+        selectSuggestion(highlighted);
+        return;
+      }
+
       void handleSearch();
     }
   }
@@ -239,21 +390,43 @@ export default function BranchCard({
         />
 
         <div>
-          <div className="flex items-end gap-2">
-            <div className="flex-1">
+          <div ref={searchAreaRef} className="flex items-end gap-2">
+            <div className="relative flex-1">
               <TextInput
-                label={t(lang, "branch.address")}
-                name={`branch-address-${branch.id}`}
+                label={t(lang, "branch.search")}
+                name={`branch-search-${branch.id}`}
                 placeholder={t(lang, "branch.address.placeholder")}
-                value={branch.address}
-                error={errorFor("address")}
-                required
+                value={searchQuery}
                 onKeyDown={handleAddressKeyDown}
-                onChange={(value) => {
-                  onChange({ address: value });
-                  setSearchQuery(value);
-                }}
+                onChange={setSearchQuery}
               />
+
+              {suggestions.length > 0 ? (
+                <ul
+                  role="listbox"
+                  aria-label={t(lang, "branch.search")}
+                  className="absolute inset-x-0 top-full z-[1000] mt-1 max-h-64 overflow-y-auto rounded-panel border border-line bg-card p-1 shadow-card"
+                >
+                  {suggestions.map((suggestion: GeoResult, suggestionIndex: number) => (
+                    <li
+                      key={`${suggestion.latitude}-${suggestion.longitude}-${suggestionIndex}`}
+                      role="option"
+                      aria-selected={suggestionIndex === highlightedIndex}
+                    >
+                      <button
+                        type="button"
+                        onMouseEnter={() => setHighlightedIndex(suggestionIndex)}
+                        onClick={() => selectSuggestion(suggestion)}
+                        className={`block w-full truncate rounded-panel px-3 py-2 text-start text-sm text-ink transition hover:bg-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${
+                          suggestionIndex === highlightedIndex ? "bg-soft" : ""
+                        }`}
+                      >
+                        {suggestion.displayName}
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              ) : null}
             </div>
 
             <Button
@@ -270,9 +443,44 @@ export default function BranchCard({
             <p className="mt-1.5 text-xs text-muted">{t(lang, "map.loading")}</p>
           ) : isSearching ? (
             <p className="mt-1.5 text-xs text-muted">{t(lang, "branch.searching")}</p>
+          ) : isSuggesting ? (
+            <p className="mt-1.5 text-xs text-muted">{t(lang, "branch.suggestions.loading")}</p>
           ) : message === "" ? null : (
             <p className="mt-1.5 text-xs text-muted">{message}</p>
           )}
+        </div>
+
+        {/* The chosen address is read-only: the visitor searches above and never edits it here. */}
+        <div>
+          <label
+            htmlFor={`branch-address-box-${branch.id}`}
+            className="mb-2 block text-sm font-semibold text-ink"
+          >
+            {t(lang, "branch.address")}
+            <span className="text-danger-strong"> *</span>
+          </label>
+
+          <input
+            id={`branch-address-box-${branch.id}`}
+            value={branch.address}
+            readOnly
+            placeholder={t(lang, "branch.address.placeholder")}
+            aria-invalid={errorFor("address") !== undefined}
+            aria-describedby={errorFor("address") ? `branch-address-error-${branch.id}` : undefined}
+            className={`h-12 w-full rounded-panel border bg-soft px-4 text-sm text-muted outline-none placeholder:text-muted/70 ${
+              errorFor("address") ? "border-danger-strong" : "border-line"
+            }`}
+          />
+
+          {errorFor("address") ? (
+            <p
+              id={`branch-address-error-${branch.id}`}
+              role="alert"
+              className="mt-1.5 text-xs font-semibold text-danger-strong"
+            >
+              {errorFor("address")}
+            </p>
+          ) : null}
         </div>
 
         <TextInput
