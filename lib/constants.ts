@@ -14,6 +14,13 @@ export const TOTAL_STEPS = STEP_ORDER.length;
 /** The maximum number of branches a restaurant can have. */
 export const MAX_BRANCHES = 2;
 
+/**
+ * The backend day code of each day of the week, in the backend order.
+ * 0 = Saturday, 1 = Sunday, 2 = Monday, 3 = Tuesday, 4 = Wednesday, 5 = Thursday, 6 = Friday.
+ */
+export const WORKING_DAY_CODES: readonly number[] = [0, 1, 2, 3, 4, 5, 6];
+// TODO: Confirm codes 1 to 6 with the backend. Only 0 = Saturday is confirmed.
+
 /** The country code sent with every branch. The restaurants are in Egypt for now. */
 export const DEFAULT_COUNTRY_CODE = "EG";
 
