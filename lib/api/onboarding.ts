@@ -1,7 +1,9 @@
 // This file builds the onboarding request body and sends it to the backend.
 
+import { WORKING_DAY_CODES } from "@/lib/constants";
 import { ApiError, apiPost } from "./client";
 import type {
+  Branch,
   OnboardingBranchPayload,
   OnboardingSubmitPayload,
   RegisterData,
@@ -10,8 +12,52 @@ import type {
 
 const ONBOARDING_PATH = "/api/v1/onboarding-requests";
 
+/** One working-hours row of a branch, for the backend. */
+export type WorkingHoursEntry = {
+  dayOfWeek: number;
+  isClosed: boolean;
+  openTime: string;
+  closeTime: string;
+  closesNextDay: boolean;
+};
+
+type OnboardingBranchRequest = Omit<OnboardingBranchPayload, "workingHours"> & {
+  workingHours: WorkingHoursEntry[];
+};
+
+type OnboardingRequest = Omit<OnboardingSubmitPayload, "branches"> & {
+  branches: OnboardingBranchRequest[];
+};
+
+/** Keeps only "HH:mm", even if the time input includes seconds. */
+function toHourMinute(value: string): string {
+  const trimmed: string = value.trim();
+  return trimmed.length > 5 ? trimmed.slice(0, 5) : trimmed;
+}
+
+/** Builds the same 7-day schedule from the single schedule the owner entered. */
+export function buildWorkingHours(branch: Branch): WorkingHoursEntry[] {
+  const openTime: string = toHourMinute(branch.openingTime);
+  const closeTime: string = toHourMinute(branch.closingTime);
+
+  if (openTime === "" || closeTime === "") {
+    throw new Error("A branch has no opening hours");
+  }
+
+  // An earlier closing time means the branch closes after midnight.
+  const closesNextDay: boolean = closeTime < openTime;
+
+  return WORKING_DAY_CODES.map((dayOfWeek: number) => ({
+    dayOfWeek,
+    isClosed: false,
+    openTime,
+    closeTime,
+    closesNextDay,
+  }));
+}
+
 /** Builds the body of the registration request. */
-export function buildOnboardingPayload(data: RegisterData): OnboardingSubmitPayload {
+export function buildOnboardingPayload(data: RegisterData): OnboardingRequest {
   const subscriptionOfferId: string | null = data.subscriptionOfferId;
   const logoAssetId: string | null = data.logoAssetId;
   const menuAssetId: string | null = data.menuAssetId;
@@ -24,7 +70,7 @@ export function buildOnboardingPayload(data: RegisterData): OnboardingSubmitPayl
     throw new Error("The uploads are not confirmed yet");
   }
 
-  const branches: OnboardingBranchPayload[] = data.branches.map((branch, index) => {
+  const branches: OnboardingBranchRequest[] = data.branches.map((branch, index) => {
     if (branch.latitude === null || branch.longitude === null) {
       throw new Error("A branch has no location");
     }
@@ -46,8 +92,7 @@ export function buildOnboardingPayload(data: RegisterData): OnboardingSubmitPayl
       longitude: branch.longitude,
       isPrimary: index === 0,
       sortOrder: index,
-      // TODO: map openingTime and closingTime once the DayOfWeek format is confirmed.
-      workingHours: null,
+      workingHours: buildWorkingHours(branch),
     };
   });
 
