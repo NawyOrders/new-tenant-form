@@ -71,7 +71,7 @@ export const translations = {
   "field.restaurantNameEn.placeholder": { ar: "e.g. My Restaurant", en: "e.g. My Restaurant" },
 
   // ----- Subdomain of the restaurant -----
-  "subdomain.label": { ar: "الرابط الخاص بالمطعم", en: "Restaurant subdomain" },
+  "subdomain.label": { ar: "اسم النطاق المطلوب", en: "Restaurant subdomain" },
   "subdomain.placeholder": { ar: "مثال: my-cafe", en: "e.g. mycafe" },
   "subdomain.hint": {
     ar: "حروف إنجليزية صغيرة وأرقام فقط، من 3 لـ 30 حرف",
