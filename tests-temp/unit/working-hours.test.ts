@@ -29,9 +29,11 @@ function makeData(branches: Branch[]): RegisterData {
   return {
     restaurantNameAr: "\u0645\u0637\u0639\u0645 \u062a\u062c\u0631\u064a\u0628\u064a",
     restaurantNameEn: "Test Restaurant",
+    subdomain: "testrestaurant",
     logoFile: new File(["logo"], "logo.png", { type: "image/png" }),
-    menuFile: new File(["menu"], "menu.pdf", { type: "application/pdf" }),
+    menuFiles: [new File(["menu"], "menu.pdf", { type: "application/pdf" })],
     logoAssetId: "logo-asset",
+    menuAssets: [],
     menuAssetId: "menu-asset",
     owner: {
       fullName: "Ahmed Mahmoud",

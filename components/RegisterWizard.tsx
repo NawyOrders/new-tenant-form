@@ -43,6 +43,7 @@ import type {
 const INITIAL_DATA: RegisterData = {
   restaurantNameAr: "",
   restaurantNameEn: "",
+  subdomain: "",
   logoFile: null,
   menuFiles: [],
   logoAssetId: null,
@@ -122,6 +123,10 @@ function RegisterWizardInner(): ReactElement {
   const [offersStatus, setOffersStatus] = useState<OffersStatus>("idle");
   const [offersErrorKey, setOffersErrorKey] = useState<TranslationKey>("package.loadFailed");
   const offersLoadingRef = useRef<boolean>(false);
+
+  // The one subdomain value the backend confirmed as available. It is the only value that may move on.
+  const availableSubdomainRef = useRef<string>("");
+  const [subdomainCheckToken, setSubdomainCheckToken] = useState<number>(0);
 
   // The logo and the menu are kept in the browser only. The picture of the file is a local
   // address, and the old one is freed as soon as the file changes.
@@ -446,10 +451,23 @@ function RegisterWizardInner(): ReactElement {
     const stepErrors: StepErrors = validateStep(currentStep, data, lang);
     setErrors(stepErrors);
 
-    if (Object.keys(stepErrors).length === 0) {
-      setCurrentStep(currentStep + 1);
-      scrollToTop();
+    if (Object.keys(stepErrors).length > 0) {
+      return;
     }
+
+    // Step 1 only moves on when the CURRENT subdomain came back available.
+    if (currentStep === 1 && availableSubdomainRef.current !== data.subdomain) {
+      setSubdomainCheckToken((prev) => prev + 1);
+      return;
+    }
+
+    setCurrentStep(currentStep + 1);
+    scrollToTop();
+  }
+
+  /** Keeps the value of the last finished subdomain check. */
+  function handleSubdomainCheckResult(value: string, available: boolean): void {
+    availableSubdomainRef.current = available ? value : "";
   }
 
   /** The step that owns one field, used when the backend rejects a field. */
@@ -476,6 +494,14 @@ function RegisterWizardInner(): ReactElement {
         scrollToTop();
         return;
       }
+    }
+
+    // The subdomain is sent only after the CURRENT value was checked as available.
+    if (availableSubdomainRef.current !== data.subdomain) {
+      setCurrentStep(1);
+      setSubdomainCheckToken((prev) => prev + 1);
+      scrollToTop();
+      return;
     }
 
     // The request carries the asset ids, so the logo and every menu file must be confirmed first.
@@ -554,6 +580,8 @@ function RegisterWizardInner(): ReactElement {
     setMenuUrl(null);
     setLogoUpload(EMPTY_UPLOAD_STATE);
     setMenuUploads([]);
+    availableSubdomainRef.current = "";
+    setSubdomainCheckToken(0);
     setData(INITIAL_DATA);
     setErrors({});
     setSubmitError("");
@@ -666,6 +694,8 @@ function RegisterWizardInner(): ReactElement {
                         onRemoveMenuFile={handleRemoveMenuFile}
                         onRetryLogo={handleRetryLogo}
                         onRetryMenuFile={handleRetryMenuFile}
+                        onSubdomainCheckResult={handleSubdomainCheckResult}
+                        subdomainCheckToken={subdomainCheckToken}
                       />
                     );
                   }

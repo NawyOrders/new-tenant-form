@@ -21,6 +21,21 @@ export const MAX_BRANCHES = 2;
 export const WORKING_DAY_CODES: readonly number[] = [0, 1, 2, 3, 4, 5, 6];
 // TODO: Confirm codes 1 to 6 with the backend. Only 0 = Saturday is confirmed.
 
+/** The shortest allowed restaurant subdomain, in characters. */
+export const SUBDOMAIN_MIN_LENGTH = 3;
+
+/** The longest allowed restaurant subdomain, in characters. */
+export const SUBDOMAIN_MAX_LENGTH = 30;
+
+/** The words the owner cannot take as a subdomain, matched exactly after lowercasing. */
+export const RESERVED_SUBDOMAINS: string[] = ["www", "api", "admin", "restaurant", "dashboard", "register"];
+
+/** The wait after the last keystroke before the availability check runs, in milliseconds. */
+export const SUBDOMAIN_CHECK_DEBOUNCE_MS = 500;
+
+/** The domain the subdomain is shown under in the preview. */
+export const SUBDOMAIN_HOST = "nawyorders.com";
+
 /** The country code sent with every branch. The restaurants are in Egypt for now. */
 export const DEFAULT_COUNTRY_CODE = "EG";
 

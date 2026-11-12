@@ -44,6 +44,7 @@ function makeData(overrides: Partial<RegisterData> = {}): RegisterData {
   return {
     restaurantNameAr: ARABIC_NAME,
     restaurantNameEn: "Test Restaurant",
+    subdomain: "mycafe",
     logoFile: new File(["logo"], "logo.png", { type: "image/png" }),
     menuFiles: [new File(["menu"], "menu.pdf", { type: "application/pdf" })],
     logoAssetId: null,
