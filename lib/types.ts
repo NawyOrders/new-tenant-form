@@ -47,10 +47,18 @@ export type BrandColors = {
   accentColor: string; // an empty string means "not chosen yet"
 };
 
+/** The answer of the backend to the subdomain availability check. */
+export type SubdomainAvailability = {
+  subdomain: string;
+  available: boolean;
+  reason: string | null;
+};
+
 /** The whole registration form. This is the ONE object kept in the RegisterWizard state. */
 export type RegisterData = {
   restaurantNameAr: string;
   restaurantNameEn: string;
+  subdomain: string; // lowercase letters and digits only, checked with the backend before moving on
   logoFile: File | null; // kept for the local preview and for a retry after a failed upload
   menuFile: File | null; // kept for the local preview and for a retry after a failed upload
   logoAssetId: string | null;
@@ -189,6 +197,7 @@ export type OnboardingBranchPayload = {
 export type OnboardingSubmitPayload = {
   restaurantNameEn: string;
   restaurantNameAr: string;
+  subdomain: string;
   ownerFullName: string;
   ownerEmail: string;
   ownerPhone: string;

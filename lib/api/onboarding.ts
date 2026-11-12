@@ -1,14 +1,61 @@
 // This file builds the onboarding request body and sends it to the backend.
 
-import { ApiError, apiPost } from "./client";
+import { ApiError, apiGet, apiPost } from "./client";
+import type { TranslationKey } from "@/lib/i18n";
+import { isValidSubdomain } from "@/lib/validation";
 import type {
   OnboardingBranchPayload,
   OnboardingSubmitPayload,
   RegisterData,
+  SubdomainAvailability,
   SubmitResult,
 } from "@/lib/types";
 
 const ONBOARDING_PATH = "/api/v1/onboarding-requests";
+const SUBDOMAIN_AVAILABILITY_PATH = "/api/v1/onboarding-requests/subdomain-availability";
+
+/** The message key of one reason value the backend sends for a taken subdomain. */
+export function subdomainReasonKey(reason: string | null): TranslationKey {
+  if (reason === "reserved") {
+    return "subdomain.reserved";
+  }
+
+  if (reason === "invalid") {
+    return "subdomain.invalid";
+  }
+
+  return "subdomain.taken";
+}
+
+/** Reads the availability answer, and stops when the backend sends an incomplete one. */
+function readAvailability(data: unknown): SubdomainAvailability {
+  if (data !== null && typeof data === "object") {
+    const record = data as Record<string, unknown>;
+
+    if (typeof record.subdomain === "string" && typeof record.available === "boolean") {
+      return {
+        subdomain: record.subdomain,
+        available: record.available,
+        reason: typeof record.reason === "string" ? record.reason : null,
+      };
+    }
+  }
+
+  throw new ApiError("server", "The subdomain availability response is incomplete");
+}
+
+/** Asks the backend whether one subdomain is free. The caller may abort when the value changes. */
+export async function checkSubdomainAvailability(
+  subdomain: string,
+  signal?: AbortSignal,
+): Promise<SubdomainAvailability> {
+  const raw: unknown = await apiGet<unknown>(
+    `${SUBDOMAIN_AVAILABILITY_PATH}?subdomain=${encodeURIComponent(subdomain)}`,
+    signal,
+  );
+
+  return readAvailability(raw);
+}
 
 /** Builds the body of the registration request. */
 export function buildOnboardingPayload(data: RegisterData): OnboardingSubmitPayload {
@@ -22,6 +69,10 @@ export function buildOnboardingPayload(data: RegisterData): OnboardingSubmitPayl
 
   if (logoAssetId === null || menuAssetId === null) {
     throw new Error("The uploads are not confirmed yet");
+  }
+
+  if (!isValidSubdomain(data.subdomain)) {
+    throw new Error("The subdomain is not valid");
   }
 
   const branches: OnboardingBranchPayload[] = data.branches.map((branch, index) => {
@@ -54,6 +105,7 @@ export function buildOnboardingPayload(data: RegisterData): OnboardingSubmitPayl
   return {
     restaurantNameEn: data.restaurantNameEn.trim(),
     restaurantNameAr: data.restaurantNameAr.trim(),
+    subdomain: data.subdomain,
     ownerFullName: data.owner.fullName.trim(),
     ownerEmail: data.owner.email.trim(),
     ownerPhone: data.owner.phone.trim(),

@@ -3,7 +3,13 @@
 
 import { t } from "./i18n";
 import type { TranslationKey } from "./i18n";
-import { MAX_BRANCHES, STEP_ORDER } from "./constants";
+import {
+  MAX_BRANCHES,
+  RESERVED_SUBDOMAINS,
+  STEP_ORDER,
+  SUBDOMAIN_MAX_LENGTH,
+  SUBDOMAIN_MIN_LENGTH,
+} from "./constants";
 import type { Lang, RegisterData } from "./types";
 
 /** True when the text looks like #RRGGBB. */
@@ -159,6 +165,47 @@ export function isValidEmail(value: string): boolean {
   return isKnownProvider(parts.domain) || isValidCustomDomain(parts.domain);
 }
 
+/** Converts what the owner typed into a subdomain: lowercase letters and digits only. */
+export function normalizeSubdomain(value: string): string {
+  return value.toLowerCase().replace(/[^a-z0-9]/g, "");
+}
+
+/** True when the subdomain is one of the reserved words, matched exactly. */
+export function isReservedSubdomain(value: string): boolean {
+  return RESERVED_SUBDOMAINS.includes(value);
+}
+
+/** True when the subdomain passes the frontend rules: 3 to 30 lowercase letters or digits, not reserved. */
+export function isValidSubdomain(value: string): boolean {
+  return (
+    value.length >= SUBDOMAIN_MIN_LENGTH &&
+    value.length <= SUBDOMAIN_MAX_LENGTH &&
+    /^[a-z0-9]+$/.test(value) &&
+    !isReservedSubdomain(value)
+  );
+}
+
+/** The subdomain error of the frontend rules, empty when the value may be checked with the backend. */
+export function getSubdomainError(value: string, lang: Lang): string {
+  if (value.trim() === "") {
+    return t(lang, "subdomain.required");
+  }
+
+  if (value.length < SUBDOMAIN_MIN_LENGTH) {
+    return t(lang, "subdomain.tooShort");
+  }
+
+  if (value.length > SUBDOMAIN_MAX_LENGTH || !/^[a-z0-9]+$/.test(value)) {
+    return t(lang, "subdomain.invalid");
+  }
+
+  if (isReservedSubdomain(value)) {
+    return t(lang, "subdomain.reserved");
+  }
+
+  return "";
+}
+
 /** Step 1: the main info of the restaurant and of the owner. */
 export function validateStep1(data: RegisterData, lang: Lang): Record<string, string> {
   const errors: Record<string, string> = {};
@@ -171,6 +218,11 @@ export function validateStep1(data: RegisterData, lang: Lang): Record<string, st
   const restaurantNameEnError: string = getNameError(data.restaurantNameEn, lang, "en");
   if (restaurantNameEnError !== "") {
     errors["restaurantNameEn"] = restaurantNameEnError;
+  }
+
+  const subdomainError: string = getSubdomainError(data.subdomain, lang);
+  if (subdomainError !== "") {
+    errors["subdomain"] = subdomainError;
   }
 
   if (data.logoFile === null) {
@@ -300,6 +352,10 @@ export function getFieldError(field: string, data: RegisterData, lang: Lang): st
 
   if (field === "restaurantNameEn") {
     return getNameError(data.restaurantNameEn, lang, "en");
+  }
+
+  if (field === "subdomain") {
+    return getSubdomainError(data.subdomain, lang);
   }
 
   if (field === "owner.fullName") {

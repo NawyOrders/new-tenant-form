@@ -69,6 +69,32 @@ export const translations = {
   "field.restaurantNameAr.placeholder": { ar: "مثال: مطعم كذا", en: "مثال: مطعم كذا" },
   "field.restaurantNameEn": { ar: "اسم المطعم بالإنجليزي", en: "Restaurant name (English)" },
   "field.restaurantNameEn.placeholder": { ar: "e.g. My Restaurant", en: "e.g. My Restaurant" },
+
+  // ----- Subdomain of the restaurant -----
+  "subdomain.label": { ar: "الرابط الخاص بالمطعم", en: "Restaurant subdomain" },
+  "subdomain.placeholder": { ar: "مثال: my-cafe", en: "e.g. mycafe" },
+  "subdomain.hint": {
+    ar: "حروف إنجليزية صغيرة وأرقام فقط، من 3 لـ 30 حرف",
+    en: "Lowercase English letters and digits only, 3 to 30 characters",
+  },
+  "subdomain.checking": { ar: "جاري التحقق...", en: "Checking..." },
+  "subdomain.available": { ar: "الرابط متاح", en: "Subdomain is available" },
+  "subdomain.tooShort": {
+    ar: "الرابط لازم يكون 3 حروف على الأقل",
+    en: "Subdomain must be at least 3 characters",
+  },
+  "subdomain.reserved": { ar: "هذا الرابط محجوز، اختر رابطاً آخر", en: "This subdomain is reserved, choose another" },
+  "subdomain.taken": {
+    ar: "هذا الرابط مستخدم بالفعل، اختر رابطاً آخر",
+    en: "This subdomain is already taken, choose another",
+  },
+  "subdomain.invalid": { ar: "استخدم حروف إنجليزية صغيرة وأرقام فقط", en: "Use lowercase English letters and digits only" },
+  "subdomain.checkFailed": {
+    ar: "تعذر التحقق من الرابط، حاول مرة أخرى",
+    en: "Could not check the subdomain, try again",
+  },
+  "subdomain.retry": { ar: "إعادة المحاولة", en: "Try again" },
+  "subdomain.required": { ar: "اكتب الرابط الخاص بالمطعم", en: "Enter the restaurant subdomain" },
   "field.logo": { ar: "الشعار", en: "Logo" },
   "field.logo.drop": { ar: "اسحب الشعار هنا أو اضغط للرفع", en: "Drag the logo here or click to upload" },
   "field.logo.hint": { ar: "PNG أو JPG أو SVG — بحد أقصى 5 ميجا بايت", en: "PNG, JPG or SVG — max 5 MB" },

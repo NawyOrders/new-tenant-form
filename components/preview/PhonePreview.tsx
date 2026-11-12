@@ -6,7 +6,7 @@
 
 import type { ReactElement } from "react";
 import PreviewBranch from "./PreviewBranch";
-import { DEFAULT_BRAND_COLORS } from "@/lib/constants";
+import { DEFAULT_BRAND_COLORS, SUBDOMAIN_HOST } from "@/lib/constants";
 import { formatNumber, t } from "@/lib/i18n";
 import type { TranslationKey } from "@/lib/i18n";
 import { theme } from "@/lib/theme";
@@ -108,6 +108,9 @@ export default function PhonePreview({
                 <span className="block truncate text-sm font-semibold text-card">{restaurantNameAr}</span>
                 <span className="block truncate text-[11px] font-medium text-card/90" dir="ltr">
                   {restaurantNameEn}
+                </span>
+                <span className="block truncate text-[11px] text-card/85" dir="ltr">
+                  {data.subdomain === "" ? t(lang, "subdomain.placeholder") : `${data.subdomain}.${SUBDOMAIN_HOST}`}
                 </span>
                 <span className="block text-[11px] text-card/85">
                   {data.branches.length} {t(lang, "preview.branches")} · {t(lang, "app.brand")}

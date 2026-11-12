@@ -69,6 +69,8 @@ type SendOptions = {
   headers?: Record<string, string>;
   /** Overrides the default JSON timeout, for slow calls such as the logo palette. */
   timeoutMs?: number;
+  /** Lets the caller cancel the request when its input changes. */
+  signal?: AbortSignal;
 };
 
 /** Sends JSON to the backend and returns the unwrapped data of the wrapper. */
@@ -79,6 +81,16 @@ async function apiSend<T>(path: string, options: SendOptions): Promise<T> {
     () => controller.abort(),
     options.timeoutMs ?? TIMEOUT_MS,
   );
+  // A caller abort (a newer value) cancels this request the same way a timeout does.
+  const abortFromCaller = (): void => controller.abort();
+
+  if (options.signal !== undefined) {
+    if (options.signal.aborted) {
+      controller.abort();
+    } else {
+      options.signal.addEventListener("abort", abortFromCaller, { once: true });
+    }
+  }
 
   try {
     const response: Response = await fetch(url, {
@@ -115,13 +127,14 @@ async function apiSend<T>(path: string, options: SendOptions): Promise<T> {
 
     throw new ApiError("network", "The request failed");
   } finally {
+    options.signal?.removeEventListener("abort", abortFromCaller);
     clearTimeout(timeoutId);
   }
 }
 
 /** GETs one path from the backend and returns the unwrapped data. */
-export async function apiGet<T>(path: string): Promise<T> {
-  return apiSend<T>(path, { method: "GET" });
+export async function apiGet<T>(path: string, signal?: AbortSignal): Promise<T> {
+  return apiSend<T>(path, { method: "GET", signal });
 }
 
 /** POSTs a JSON body to the backend and returns the unwrapped data. */

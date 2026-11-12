@@ -13,6 +13,21 @@ export const TOTAL_STEPS = STEP_ORDER.length;
 /** The maximum number of branches a restaurant can have. */
 export const MAX_BRANCHES = 2;
 
+/** The shortest allowed restaurant subdomain, in characters. */
+export const SUBDOMAIN_MIN_LENGTH = 3;
+
+/** The longest allowed restaurant subdomain, in characters. */
+export const SUBDOMAIN_MAX_LENGTH = 30;
+
+/** The words the owner cannot take as a subdomain, matched exactly after lowercasing. */
+export const RESERVED_SUBDOMAINS: string[] = ["www", "api", "admin", "restaurant", "dashboard", "register"];
+
+/** The wait after the last keystroke before the availability check runs, in milliseconds. */
+export const SUBDOMAIN_CHECK_DEBOUNCE_MS = 500;
+
+/** The domain the subdomain is shown under in the preview. */
+export const SUBDOMAIN_HOST = "nawyorders.com";
+
 /** The country code sent with every branch. The restaurants are in Egypt for now. */
 export const DEFAULT_COUNTRY_CODE = "EG";
 
